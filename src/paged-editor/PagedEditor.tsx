@@ -208,7 +208,7 @@ const pluginOverlaysStyles: CSSProperties = {
   bottom: 0,
   pointerEvents: 'none',
   overflow: 'visible',
-  zIndex: 5,
+  zIndex: 8,
 };
 
 // =============================================================================
