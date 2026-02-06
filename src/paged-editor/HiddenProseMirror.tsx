@@ -1,20 +1,18 @@
 /**
  * HiddenProseMirror Component
  *
- * A hidden ProseMirror editor that receives focus and keyboard input while being
- * visually off-screen. The actual visual rendering is handled by the layout engine
- * and DOM painter, while this hidden editor provides:
+ * Off-screen ProseMirror instance that owns all keyboard input and state
+ * while the paginated layout engine handles visual output. Responsibilities:
  *
  * - Keyboard input handling
  * - Selection state management
  * - Accessibility (semantic document structure for screen readers)
  * - ProseMirror transaction processing
  *
- * Key design decisions:
- * - Uses position:fixed + left:-9999px (not visibility:hidden which prevents focus)
- * - Uses opacity:0 + z-index:-1 to hide while keeping focusable
- * - Does NOT set aria-hidden (editor must remain accessible)
- * - Width matches document content width for proper text measurement
+ * Visibility approach: The editor is moved off-viewport with position:fixed
+ * and rendered transparent so it can still receive focus and remain part of
+ * the accessibility tree. Content width is kept in sync with the document
+ * so that ProseMirror's internal measurements stay valid.
  */
 
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, memo } from 'react';

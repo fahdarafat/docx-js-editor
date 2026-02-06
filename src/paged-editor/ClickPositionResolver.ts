@@ -1,5 +1,5 @@
 /**
- * DOM Position Index
+ * Click Position Resolver
  *
  * Provides fast, indexed lookups for click-to-position mapping.
  * Caches page, fragment, and run positions for O(log n) lookups
@@ -50,10 +50,10 @@ export interface PositionLookupResult {
 }
 
 /**
- * DomPositionIndex provides fast click-to-position mapping
+ * ClickPositionResolver provides fast click-to-position mapping
  * by caching DOM element positions and using binary search.
  */
-export class DomPositionIndex {
+export class ClickPositionResolver {
   /** Cached page info sorted by Y position */
   #pages: PageInfo[] = [];
 

@@ -50,7 +50,12 @@ import type {
 
 // Layout bridge
 import { toFlowBlocks } from '../layout-bridge/toFlowBlocks';
-import { measureParagraph, type FloatingImageZone } from '../layout-bridge/measuring';
+import {
+  measureParagraph,
+  resetCanvasContext,
+  clearAllCaches,
+  type FloatingImageZone,
+} from '../layout-bridge/measuring';
 import { hitTestFragment, hitTestTableCell } from '../layout-bridge/hitTest';
 import { clickToPosition } from '../layout-bridge/clickToPosition';
 import { clickToPositionDom } from '../layout-bridge/clickToPositionDom';
@@ -70,7 +75,7 @@ import {
 } from '../layout-painter/renderPage';
 
 // Selection sync
-import { SelectionSyncCoordinator } from './SelectionSyncCoordinator';
+import { LayoutSelectionGate } from './LayoutSelectionGate';
 
 // Visual line navigation hook
 import { useVisualLineNavigation } from './useVisualLineNavigation';
@@ -861,8 +866,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const isDraggingRef = useRef(false);
     const dragAnchorRef = useRef<number | null>(null);
 
-    // Selection sync coordinator - ensures selection renders only when layout is current
-    const syncCoordinator = useMemo(() => new SelectionSyncCoordinator(), []);
+    // Selection gate - ensures selection renders only when layout is current
+    const syncCoordinator = useMemo(() => new LayoutSelectionGate(), []);
 
     // Compute page size and margins
     const pageSize = useMemo(() => getPageSize(sectionProperties), [sectionProperties]);
@@ -896,8 +901,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       (state: EditorState) => {
         const pipelineStart = performance.now();
 
-        // Capture current epoch for this layout run
-        const currentEpoch = syncCoordinator.getDocEpoch();
+        // Capture current state sequence for this layout run
+        const currentEpoch = syncCoordinator.getStateSeq();
 
         // Signal layout is starting
         syncCoordinator.onLayoutStart();
@@ -998,7 +1003,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           console.error('[PagedEditor] Layout pipeline error:', error);
         }
 
-        // Signal layout is complete for this epoch
+        // Signal layout is complete for this sequence
         syncCoordinator.onLayoutComplete(currentEpoch);
       },
       [
@@ -1277,8 +1282,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const handleTransaction = useCallback(
       (transaction: Transaction, newState: EditorState) => {
         if (transaction.docChanged) {
-          // Increment doc epoch to signal document changed
-          syncCoordinator.incrementDocEpoch();
+          // Increment state sequence to signal document changed
+          syncCoordinator.incrementStateSeq();
 
           // Content changed - full layout
           runLayoutPipeline(newState);
@@ -1616,6 +1621,29 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       },
       [runLayoutPipeline, updateSelectionOverlay, readOnly]
     );
+
+    // Re-layout when web fonts finish loading to fix measurements that were
+    // computed against fallback fonts during initial render.
+    // Uses FontFaceSet.onloadingdone to detect when new fonts complete loading.
+    useEffect(() => {
+      const handleFontsLoaded = () => {
+        const view = hiddenPMRef.current?.getView();
+        if (view) {
+          // Clear all cached measurements — font metrics have changed
+          resetCanvasContext();
+          clearAllCaches();
+          runLayoutPipeline(view.state);
+          updateSelectionOverlay(view.state);
+        }
+      };
+
+      // Listen for font loading completion events
+      window.document.fonts.addEventListener('loadingdone', handleFontsLoaded);
+      return () => {
+        window.document.fonts.removeEventListener('loadingdone', handleFontsLoaded);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // =========================================================================
     // Imperative Handle

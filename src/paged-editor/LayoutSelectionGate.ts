@@ -1,30 +1,30 @@
 /**
- * Selection Sync Coordinator
+ * Layout Selection Gate
  *
- * Ensures selection rendering only happens when layout is current.
- * Uses epoch-based synchronization to prevent stale cursor positions.
+ * Guards selection rendering until layout is up-to-date.
+ * Uses sequenced versioning to prevent stale cursor positions.
  */
 
 type RenderCallback = () => void;
 
 /**
- * SelectionSyncCoordinator manages the synchronization between
- * document changes and layout rendering to ensure selection
- * only renders when the DOM is up-to-date.
+ * LayoutSelectionGate coordinates the timing between document edits and
+ * layout reflow so that selection overlays are only painted against
+ * current DOM geometry.
  *
  * Workflow:
- * 1. Document changes → setDocEpoch(++epoch)
+ * 1. Document changes → setStateSeq(++seq)
  * 2. Layout starts → onLayoutStart()
- * 3. Layout completes → onLayoutComplete(epoch)
+ * 3. Layout completes → onLayoutComplete(seq)
  * 4. Selection update requested → requestRender()
  * 5. If safe → callback is called
  */
-export class SelectionSyncCoordinator {
-  /** Current document state version */
-  #docEpoch = 0;
+export class LayoutSelectionGate {
+  /** Current document state sequence */
+  #stateSeq = 0;
 
-  /** Last painted layout version */
-  #layoutEpoch = 0;
+  /** Last painted layout sequence */
+  #renderSeq = 0;
 
   /** Whether layout is currently being computed/painted */
   #layoutUpdating = false;
@@ -36,33 +36,33 @@ export class SelectionSyncCoordinator {
   #renderCallbacks: Set<RenderCallback> = new Set();
 
   /**
-   * Set the document epoch (call when document changes).
+   * Set the document state sequence (call when document changes).
    * This should be called on every ProseMirror transaction that changes the doc.
    */
-  setDocEpoch(epoch: number): void {
-    this.#docEpoch = epoch;
+  setStateSeq(seq: number): void {
+    this.#stateSeq = seq;
   }
 
   /**
-   * Increment document epoch (convenience method).
-   * Returns the new epoch value.
+   * Increment document state sequence (convenience method).
+   * Returns the new sequence value.
    */
-  incrementDocEpoch(): number {
-    return ++this.#docEpoch;
+  incrementStateSeq(): number {
+    return ++this.#stateSeq;
   }
 
   /**
-   * Get current document epoch.
+   * Get current document state sequence.
    */
-  getDocEpoch(): number {
-    return this.#docEpoch;
+  getStateSeq(): number {
+    return this.#stateSeq;
   }
 
   /**
-   * Get current layout epoch.
+   * Get current layout render sequence.
    */
-  getLayoutEpoch(): number {
-    return this.#layoutEpoch;
+  getRenderSeq(): number {
+    return this.#renderSeq;
   }
 
   /**
@@ -74,10 +74,10 @@ export class SelectionSyncCoordinator {
 
   /**
    * Called when layout computation and DOM painting completes.
-   * @param epoch - The document epoch that was just painted
+   * @param seq - The document state sequence that was just painted
    */
-  onLayoutComplete(epoch: number): void {
-    this.#layoutEpoch = epoch;
+  onLayoutComplete(seq: number): void {
+    this.#renderSeq = seq;
     this.#layoutUpdating = false;
 
     // If there's a pending render and it's now safe, execute it
@@ -86,10 +86,10 @@ export class SelectionSyncCoordinator {
 
   /**
    * Check if it's safe to render selection.
-   * Safe when: layout is not updating AND layout epoch >= doc epoch
+   * Safe when: layout is not updating AND render sequence >= state sequence
    */
   isSafeToRender(): boolean {
-    return !this.#layoutUpdating && this.#layoutEpoch >= this.#docEpoch;
+    return !this.#layoutUpdating && this.#renderSeq >= this.#stateSeq;
   }
 
   /**
@@ -134,17 +134,17 @@ export class SelectionSyncCoordinator {
       try {
         callback();
       } catch (error) {
-        console.error('SelectionSyncCoordinator: render callback error', error);
+        console.error('LayoutSelectionGate: render callback error', error);
       }
     }
   }
 
   /**
-   * Reset the coordinator state (useful for testing or document reload).
+   * Reset the gate state (useful for testing or document reload).
    */
   reset(): void {
-    this.#docEpoch = 0;
-    this.#layoutEpoch = 0;
+    this.#stateSeq = 0;
+    this.#renderSeq = 0;
     this.#layoutUpdating = false;
     this.#pendingRender = null;
   }
@@ -153,15 +153,15 @@ export class SelectionSyncCoordinator {
    * Get debug info about current state.
    */
   getDebugInfo(): {
-    docEpoch: number;
-    layoutEpoch: number;
+    stateSeq: number;
+    renderSeq: number;
     layoutUpdating: boolean;
     hasPendingRender: boolean;
     isSafe: boolean;
   } {
     return {
-      docEpoch: this.#docEpoch,
-      layoutEpoch: this.#layoutEpoch,
+      stateSeq: this.#stateSeq,
+      renderSeq: this.#renderSeq,
       layoutUpdating: this.#layoutUpdating,
       hasPendingRender: this.#pendingRender !== null,
       isSafe: this.isSafeToRender(),

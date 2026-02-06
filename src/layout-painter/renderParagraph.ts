@@ -833,15 +833,9 @@ export function renderParagraphFragment(
     }
   }
 
-  // Apply line spacing if specified
-  const spacing = block.attrs?.spacing;
-  if (spacing?.line) {
-    if (spacing.lineUnit === 'multiplier') {
-      fragmentEl.style.lineHeight = String(spacing.line);
-    } else if (spacing.lineUnit === 'px') {
-      fragmentEl.style.lineHeight = `${spacing.line}px`;
-    }
-  }
+  // Note: Line spacing is applied per-line div (renderLine sets lineEl.style.height
+  // and lineEl.style.lineHeight), not at fragment level. Fragment-level line-height
+  // was removed to avoid conflicts with the explicit per-line pixel heights.
 
   // Apply borders
   const borders = block.attrs?.borders;

@@ -7,7 +7,8 @@
  * Typography conventions (matching Word behavior):
  * - ascent ≈ fontSize * 0.8 (baseline to top)
  * - descent ≈ fontSize * 0.2 (baseline to bottom)
- * - lineHeight = fontSize * 1.15 (Word 2007+ "single" line spacing)
+ * - lineHeight from font metrics (fontBoundingBoxAscent + fontBoundingBoxDescent),
+ *   falling back to fontSize * 1.15 (Word 2007+ "single" line spacing)
  */
 
 // Constants for OOXML unit conversions
@@ -146,18 +147,19 @@ export function getFontMetrics(style: FontStyle): FontMetrics {
   // Convert font size from points to pixels
   const fontSizePx = ptToPx(fontSize);
 
-  // Try to get precise metrics from canvas for ascent/descent (baseline positioning)
+  // Try to get precise metrics from canvas
   let ascent = fontSizePx * DEFAULT_ASCENT_RATIO;
   let descent = fontSizePx * DEFAULT_DESCENT_RATIO;
+  let lineHeight = fontSizePx * DEFAULT_LINE_HEIGHT_MULTIPLIER;
 
   try {
     const ctx = getCanvasContext();
     ctx.font = buildFontString(style);
 
-    // Measure a standard character to get ascent/descent
+    // Measure a standard character to get metrics
     const metrics = ctx.measureText('Hg');
 
-    // Modern browsers provide actual bounding box metrics
+    // Use actual bounding box for ascent/descent (ink bounds for baseline positioning)
     if (
       typeof metrics.actualBoundingBoxAscent === 'number' &&
       typeof metrics.actualBoundingBoxDescent === 'number'
@@ -165,14 +167,22 @@ export function getFontMetrics(style: FontStyle): FontMetrics {
       ascent = metrics.actualBoundingBoxAscent;
       descent = metrics.actualBoundingBoxDescent;
     }
+
+    // Use font design metrics (OS/2 table) for line height when available.
+    // fontBoundingBox represents the font's design metrics, giving per-font
+    // natural line heights that match Word's behavior.
+    if (
+      typeof metrics.fontBoundingBoxAscent === 'number' &&
+      typeof metrics.fontBoundingBoxDescent === 'number'
+    ) {
+      lineHeight = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+    }
   } catch {
     // Use fallback ratio-based values
   }
 
-  // Line height should be based on fontSizePx (em-box) to match CSS rendering,
-  // not on actualBoundingBox (ink bounding box) which is often smaller.
-  // This ensures our layout matches what the browser actually renders.
-  const lineHeight = fontSizePx * DEFAULT_LINE_HEIGHT_MULTIPLIER;
+  // Ensure line height is never smaller than actual glyph bounds
+  lineHeight = Math.max(lineHeight, ascent + descent);
 
   return {
     fontSize, // Keep in points for reference

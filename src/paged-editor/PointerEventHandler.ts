@@ -1,14 +1,14 @@
 /**
- * Editor Input Manager
+ * Pointer Event Handler
  *
  * Centralized input handling for all pointer events.
  * Provides single source of truth for click, drag, and focus management.
  */
 
-import type { DomPositionIndex } from './DomPositionIndex';
+import type { ClickPositionResolver } from './ClickPositionResolver';
 
 /**
- * Interface for the editor that InputManager controls.
+ * Interface for the editor that the handler controls.
  */
 export interface EditorInterface {
   /** Set selection to a position (collapsed) */
@@ -32,28 +32,28 @@ export type InputEventCallback = (event: {
 }) => void;
 
 /**
- * Options for EditorInputManager.
+ * Options for PointerEventHandler.
  */
-export interface EditorInputManagerOptions {
+export interface PointerEventHandlerOptions {
   /** The editor to control */
   editor: EditorInterface;
-  /** Position index for click mapping */
-  positionIndex: DomPositionIndex;
+  /** Position resolver for click mapping */
+  positionResolver: ClickPositionResolver;
   /** Callback for input events */
   onInput?: InputEventCallback;
 }
 
 /**
- * EditorInputManager handles all pointer input for the paged editor.
+ * PointerEventHandler handles all pointer input for the paged editor.
  * It provides:
  * - Single/double/triple click detection
  * - Drag selection with anchor tracking
  * - Coordinate normalization for zoom
  * - Focus management
  */
-export class EditorInputManager {
+export class PointerEventHandler {
   #editor: EditorInterface;
-  #positionIndex: DomPositionIndex;
+  #positionResolver: ClickPositionResolver;
   #container: HTMLElement | null = null;
   #onInput?: InputEventCallback;
 
@@ -73,9 +73,9 @@ export class EditorInputManager {
   #boundPointerUp: (e: PointerEvent) => void;
   #boundPointerLeave: (e: PointerEvent) => void;
 
-  constructor(options: EditorInputManagerOptions) {
+  constructor(options: PointerEventHandlerOptions) {
     this.#editor = options.editor;
-    this.#positionIndex = options.positionIndex;
+    this.#positionResolver = options.positionResolver;
     this.#onInput = options.onInput;
 
     // Bind handlers
@@ -110,10 +110,10 @@ export class EditorInputManager {
   }
 
   /**
-   * Update the position index reference.
+   * Update the position resolver reference.
    */
-  setPositionIndex(positionIndex: DomPositionIndex): void {
-    this.#positionIndex = positionIndex;
+  setPositionResolver(positionResolver: ClickPositionResolver): void {
+    this.#positionResolver = positionResolver;
   }
 
   /**
@@ -121,8 +121,8 @@ export class EditorInputManager {
    */
   #getPositionFromCoords(clientX: number, clientY: number): number | null {
     // Note: If the container is scaled, we might need to adjust coordinates
-    // For now, we rely on the position index to handle this
-    const result = this.#positionIndex.getPositionAtPoint(clientX, clientY);
+    // For now, we rely on the position resolver to handle this
+    const result = this.#positionResolver.getPositionAtPoint(clientX, clientY);
     return result?.pmPosition ?? null;
   }
 
@@ -144,7 +144,7 @@ export class EditorInputManager {
     const now = Date.now();
     const timeSinceLastClick = now - this.#lastClickTime;
 
-    if (timeSinceLastClick < EditorInputManager.MULTI_CLICK_DELAY && this.#lastClickPos === pos) {
+    if (timeSinceLastClick < PointerEventHandler.MULTI_CLICK_DELAY && this.#lastClickPos === pos) {
       this.#clickCount++;
     } else {
       this.#clickCount = 1;
@@ -234,7 +234,7 @@ export class EditorInputManager {
     // Get the text content around the position
     // This is a simplified version - a full implementation would
     // need access to the document content
-    const element = this.#positionIndex.getElementAtPosition(pos);
+    const element = this.#positionResolver.getElementAtPosition(pos);
     if (!element) {
       this.#editor.setSelection(pos);
       return;
@@ -274,7 +274,7 @@ export class EditorInputManager {
    */
   #selectParagraph(pos: number): void {
     // Find the paragraph element containing this position
-    const element = this.#positionIndex.getElementAtPosition(pos);
+    const element = this.#positionResolver.getElementAtPosition(pos);
     if (!element) {
       this.#editor.setSelection(pos);
       return;
