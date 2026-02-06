@@ -128,6 +128,8 @@ export interface PagedEditorProps {
   onRenderedDomContextReady?: (context: RenderedDomContext) => void;
   /** Plugin overlays to render inside the viewport. */
   pluginOverlays?: React.ReactNode;
+  /** Callback when header or footer is double-clicked for editing. */
+  onHeaderFooterDoubleClick?: (position: 'header' | 'footer') => void;
   /** Custom class name. */
   className?: string;
   /** Custom styles. */
@@ -831,6 +833,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onReady,
       onRenderedDomContextReady,
       pluginOverlays,
+      onHeaderFooterDoubleClick,
       className,
       style,
     } = props;
@@ -981,6 +984,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               footerDistance: sectionProperties?.footerDistance
                 ? twipsToPixels(sectionProperties.footerDistance)
                 : undefined,
+              pageBorders: sectionProperties?.pageBorders,
+              theme: _theme,
             } as RenderPageOptions & { pageGap?: number; blockLookup?: BlockLookup });
 
             stepTime = performance.now() - stepStart;
@@ -1465,6 +1470,25 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
      */
     const handlePagesClick = useCallback(
       (e: React.MouseEvent) => {
+        // Double-click on header/footer area triggers editing mode
+        if (e.detail === 2 && onHeaderFooterDoubleClick) {
+          const target = e.target as HTMLElement;
+          const headerEl = target.closest('.layout-page-header');
+          const footerEl = target.closest('.layout-page-footer');
+          if (headerEl) {
+            e.preventDefault();
+            e.stopPropagation();
+            onHeaderFooterDoubleClick('header');
+            return;
+          }
+          if (footerEl) {
+            e.preventDefault();
+            e.stopPropagation();
+            onHeaderFooterDoubleClick('footer');
+            return;
+          }
+        }
+
         // Double-click for word selection
         if (e.detail === 2 && hiddenPMRef.current) {
           const pmPos = getPositionFromMouse(e.clientX, e.clientY);
@@ -1521,7 +1545,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
         }
       },
-      [getPositionFromMouse]
+      [getPositionFromMouse, onHeaderFooterDoubleClick]
     );
 
     /**
@@ -1647,6 +1671,24 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Re-compute selection overlay when the container resizes.
+    // Page elements shift during window resize (centering, scrollbar changes),
+    // causing caret/selection coordinates to become stale.
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const observer = new ResizeObserver(() => {
+        const state = hiddenPMRef.current?.getState();
+        if (state) {
+          updateSelectionOverlay(state);
+        }
+      });
+
+      observer.observe(container);
+      return () => observer.disconnect();
+    }, [updateSelectionOverlay]);
 
     // =========================================================================
     // Imperative Handle

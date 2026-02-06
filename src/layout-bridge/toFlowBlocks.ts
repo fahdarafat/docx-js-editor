@@ -21,6 +21,7 @@ import type {
   TabRun,
   ImageRun,
   LineBreakRun,
+  FieldRun,
   RunFormatting,
   ParagraphAttrs,
 } from '../layout-engine/types';
@@ -210,6 +211,94 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
         pmEnd: childPos + child.nodeSize,
       };
       runs.push(run);
+    } else if (child.type.name === 'field') {
+      // Field node — convert to FieldRun for render-time substitution
+      const ft = child.attrs.fieldType as string;
+      const mappedType: FieldRun['fieldType'] =
+        ft === 'PAGE'
+          ? 'PAGE'
+          : ft === 'NUMPAGES'
+            ? 'NUMPAGES'
+            : ft === 'DATE'
+              ? 'DATE'
+              : ft === 'TIME'
+                ? 'TIME'
+                : 'OTHER';
+      const run: FieldRun = {
+        kind: 'field',
+        fieldType: mappedType,
+        fallback: (child.attrs.displayText as string) || '',
+        pmStart: childPos,
+        pmEnd: childPos + child.nodeSize,
+      };
+      runs.push(run);
+    } else if (child.type.name === 'math') {
+      // Math node — render as plain text fallback in layout
+      const text = (child.attrs.plainText as string) || '[equation]';
+      const run: TextRun = {
+        kind: 'text',
+        text,
+        italic: true,
+        fontFamily: 'Cambria Math',
+        pmStart: childPos,
+        pmEnd: childPos + child.nodeSize,
+      };
+      runs.push(run);
+    } else if (child.type.name === 'sdt') {
+      // SDT (Structured Document Tag / content control) — inline wrapper node.
+      // Descend into its children to extract the actual text runs.
+      const sdtInnerOffset = childPos + 1; // +1 for opening tag
+      child.forEach((sdtChild, sdtChildOffset) => {
+        const sdtChildPos = sdtInnerOffset + sdtChildOffset;
+        if (sdtChild.isText && sdtChild.text) {
+          const formatting = extractRunFormatting(sdtChild.marks);
+          const run: TextRun = {
+            kind: 'text',
+            text: sdtChild.text,
+            ...formatting,
+            pmStart: sdtChildPos,
+            pmEnd: sdtChildPos + sdtChild.nodeSize,
+          };
+          runs.push(run);
+        } else if (sdtChild.type.name === 'hardBreak') {
+          const run: LineBreakRun = {
+            kind: 'lineBreak',
+            pmStart: sdtChildPos,
+            pmEnd: sdtChildPos + sdtChild.nodeSize,
+          };
+          runs.push(run);
+        } else if (sdtChild.type.name === 'tab') {
+          const formatting = extractRunFormatting(sdtChild.marks);
+          const run: TabRun = {
+            kind: 'tab',
+            ...formatting,
+            pmStart: sdtChildPos,
+            pmEnd: sdtChildPos + sdtChild.nodeSize,
+          };
+          runs.push(run);
+        } else if (sdtChild.type.name === 'image') {
+          const attrs = sdtChild.attrs;
+          const run: ImageRun = {
+            kind: 'image',
+            src: attrs.src as string,
+            width: (attrs.width as number) || 100,
+            height: (attrs.height as number) || 100,
+            alt: attrs.alt as string | undefined,
+            transform: attrs.transform as string | undefined,
+            wrapType: attrs.wrapType as string | undefined,
+            displayMode: attrs.displayMode as 'inline' | 'block' | 'float' | undefined,
+            cssFloat: attrs.cssFloat as 'left' | 'right' | 'none' | undefined,
+            distTop: attrs.distTop as number | undefined,
+            distBottom: attrs.distBottom as number | undefined,
+            distLeft: attrs.distLeft as number | undefined,
+            distRight: attrs.distRight as number | undefined,
+            position: attrs.position as ImageRun['position'] | undefined,
+            pmStart: sdtChildPos,
+            pmEnd: sdtChildPos + sdtChild.nodeSize,
+          };
+          runs.push(run);
+        }
+      });
     }
   });
 
@@ -438,15 +527,36 @@ function borderWidthToPixels(eighthsOfPoint: number): number {
   return Math.max(1, Math.round((eighthsOfPoint / 8) * 1.333));
 }
 
+// OOXML border style → CSS border-style mapping
+const OOXML_TO_CSS_BORDER: Record<string, string> = {
+  single: 'solid',
+  double: 'double',
+  dotted: 'dotted',
+  dashed: 'dashed',
+  thick: 'solid',
+  dashSmallGap: 'dashed',
+  dotDash: 'dashed',
+  dotDotDash: 'dotted',
+  triple: 'double',
+  wave: 'solid',
+  doubleWave: 'double',
+  threeDEmboss: 'ridge',
+  threeDEngrave: 'groove',
+  outset: 'outset',
+  inset: 'inset',
+};
+
 /**
  * Extract cell borders from ProseMirror attributes.
+ * Borders are full BorderSpec objects with style/size/color.
  */
 function extractCellBorders(attrs: Record<string, unknown>): CellBorders | undefined {
-  const borders = attrs.borders as Record<string, boolean> | null;
-  const borderColors = attrs.borderColors as Record<string, string> | null;
-  const borderWidths = attrs.borderWidths as Record<string, number> | null;
+  const borders = attrs.borders as Record<
+    string,
+    { style?: string; size?: number; color?: { rgb?: string } }
+  > | null;
 
-  if (!borders && !borderColors && !borderWidths) {
+  if (!borders) {
     return undefined;
   }
 
@@ -454,22 +564,22 @@ function extractCellBorders(attrs: Record<string, unknown>): CellBorders | undef
   const sides = ['top', 'bottom', 'left', 'right'] as const;
 
   for (const side of sides) {
-    // Check if border is explicitly set (default to true if colors/widths are specified)
-    const hasBorder = borders?.[side] !== false;
-    const color = borderColors?.[side];
-    const width = borderWidths?.[side];
-
-    if (hasBorder && (color || width)) {
-      const spec: CellBorderSpec = {
-        style: 'solid',
-      };
-      if (color) spec.color = color.startsWith('#') ? color : `#${color}`;
-      if (width) spec.width = borderWidthToPixels(width);
-      result[side] = spec;
-    } else if (borders?.[side] === false) {
-      // Explicitly no border
+    const border = borders[side];
+    if (!border || !border.style || border.style === 'none' || border.style === 'nil') {
       result[side] = { width: 0, style: 'none' };
+      continue;
     }
+
+    const spec: CellBorderSpec = {
+      style: OOXML_TO_CSS_BORDER[border.style] || 'solid',
+    };
+    if (border.color?.rgb) {
+      spec.color = `#${border.color.rgb}`;
+    }
+    if (border.size) {
+      spec.width = borderWidthToPixels(border.size);
+    }
+    result[side] = spec;
   }
 
   return Object.keys(result).length > 0 ? result : undefined;
