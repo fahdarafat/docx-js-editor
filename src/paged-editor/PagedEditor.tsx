@@ -630,15 +630,33 @@ function measureBlocks(blocks: FlowBlock[], contentWidth: number): Measure[] {
   // Pre-extract floating image exclusion zones with anchor block indices
   const floatingZonesWithAnchors = extractFloatingZones(blocks, contentWidth);
 
-  // Find all anchor block indices where floating zones become active.
-  // Both margin-relative and paragraph-relative zones activate from their anchor block.
-  // Margin-relative zones (positioned relative to page/margin) only affect the page
-  // where they're anchored, not earlier pages.
-  const anchorIndices = new Set(floatingZonesWithAnchors.map((z) => z.anchorBlockIndex));
+  // Margin-relative zones (positioned relative to page/margin) on the same vertical
+  // position are likely on the same page. Group them and activate all from the earliest
+  // anchor so text wraps around ALL images from the first paragraph onward.
+  // e.g. left-aligned and right-aligned images at margin top should both affect text
+  // starting from the first anchor paragraph, not just the one containing each image.
+  const marginRelative = floatingZonesWithAnchors.filter((z) => z.isMarginRelative);
+  const paragraphRelative = floatingZonesWithAnchors.filter((z) => !z.isMarginRelative);
 
-  // Group zones by anchor block index so they activate at the right point
+  // Group margin-relative zones by topY and move all to earliest anchor in group
+  const marginByTopY = new Map<number, FloatingZoneWithAnchor[]>();
+  for (const z of marginRelative) {
+    const group = marginByTopY.get(z.topY) ?? [];
+    group.push(z);
+    marginByTopY.set(z.topY, group);
+  }
+
+  const adjustedZones: FloatingZoneWithAnchor[] = [...paragraphRelative];
+  for (const group of marginByTopY.values()) {
+    const minAnchor = Math.min(...group.map((z) => z.anchorBlockIndex));
+    for (const z of group) {
+      adjustedZones.push({ ...z, anchorBlockIndex: minAnchor });
+    }
+  }
+
+  // Group zones by effective anchor block index
   const zonesByAnchor = new Map<number, FloatingImageZone[]>();
-  for (const z of floatingZonesWithAnchors) {
+  for (const z of adjustedZones) {
     const existing = zonesByAnchor.get(z.anchorBlockIndex) ?? [];
     existing.push({
       leftMargin: z.leftMargin,
@@ -649,18 +667,21 @@ function measureBlocks(blocks: FlowBlock[], contentWidth: number): Measure[] {
     zonesByAnchor.set(z.anchorBlockIndex, existing);
   }
 
+  const anchorIndices = new Set(adjustedZones.map((z) => z.anchorBlockIndex));
+
   // Track cumulative Y position for floating zone overlap calculation
-  // This resets when we reach a block with floating images
+  // Resets when we reach a block with floating images (establishing local page coords)
   let cumulativeY = 0;
   let activeZones: FloatingImageZone[] = [];
 
   return blocks.map((block, blockIndex) => {
     // Check if this block is an anchor for floating images
-    // If so, reset cumulative Y and activate those zones
+    // If so, reset cumulative Y and replace active zones (old zones from previous
+    // anchors are invalid after the Y reset since their topY/bottomY are in the old
+    // coordinate system)
     if (anchorIndices.has(blockIndex)) {
       cumulativeY = 0;
-      const newZones = zonesByAnchor.get(blockIndex) ?? [];
-      activeZones = [...activeZones, ...newZones];
+      activeZones = zonesByAnchor.get(blockIndex) ?? [];
     }
 
     const zones = activeZones.length > 0 ? activeZones : undefined;
