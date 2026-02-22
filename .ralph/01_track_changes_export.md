@@ -28,7 +28,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: none
   - Commit: `feat: Add revision model primitives for track changes export`
 
-- [ ] Task 05 - Implement revision ID allocator and metadata helpers
+- [x] Task 05 - Implement revision ID allocator and metadata helpers
   - Files: `src/docx/revisions/revisionIds.ts`, `src/docx/revisions/metadata.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/revisionIds.test.ts`

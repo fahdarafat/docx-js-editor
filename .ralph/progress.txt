@@ -83,3 +83,19 @@
 [2026-02-23 00:16] NOTES: Completed Task 04 revision type primitives and marked checklist item done.
 [2026-02-23 00:16] STATUS: running
 [2026-02-23 00:16] NOTES: Preparing Task 04 commit.
+[2026-02-23 00:18] STATUS: done
+[2026-02-23 00:18] NOTES: Task 04 committed as 570414b.
+[2026-02-23 00:18] TASK: Task 05 - Implement revision ID allocator and metadata helpers
+[2026-02-23 00:18] STATUS: starting
+[2026-02-23 00:18] NOTES: Refreshing plan context and creating revision helper modules + targeted unit test.
+[2026-02-23 00:18] STATUS: editing
+[2026-02-23 00:18] NOTES: Creating src/docx/revisions helpers (revisionIds + metadata) and targeted unit test for ID allocation/existing-max detection.
+[2026-02-23 00:19] NOTES: Added src/docx/revisions/revisionIds.ts, src/docx/revisions/metadata.ts, and src/docx/revisions/revisionIds.test.ts.
+[2026-02-23 00:19] STATUS: running
+[2026-02-23 00:19] NOTES: Running bun run typecheck for Task 05.
+[2026-02-23 00:19] STATUS: testing
+[2026-02-23 00:19] NOTES: Running targeted unit test: npm run test -- src/docx/revisions/revisionIds.test.ts.
+[2026-02-23 00:20] STATUS: done
+[2026-02-23 00:20] NOTES: Task 05 verification passed (typecheck + revisionIds test) and checklist item marked done.
+[2026-02-23 00:20] STATUS: running
+[2026-02-23 00:20] NOTES: Preparing Task 05 commit.
