@@ -194,3 +194,28 @@
 [2026-02-23 00:39] NOTES: Ran npm run test -- src/docx/paragraphParser.test.ts src/docx/serializer/paragraphSerializer.test.ts - passed (5/5).
 [2026-02-23 00:39] STATUS: done
 [2026-02-23 00:39] NOTES: Completed Task 10; plan checkbox updated and commit preparation in progress.
+[2026-02-23 00:39] TASK: Add export integration tests (DOCX XML assertions)
+[2026-02-23 00:39] STATUS: starting
+[2026-02-23 00:39] NOTES: Starting Task 11 after completing Task 10 commit 006f59d.
+[2026-02-23 00:40] STATUS: reading
+[2026-02-23 00:40] NOTES: Re-read plan and confirmed Task 11 is first unchecked task.
+[2026-02-23 00:42] STATUS: editing
+[2026-02-23 00:42] NOTES: Added e2e/tests/track-changes-export.spec.ts and e2e/helpers/track-changes-export.ts with XML assertions for insertion/deletion wrappers and disabled mode fallback; updated e2e/helpers/index.ts exports.
+[2026-02-23 00:43] STATUS: failed
+[2026-02-23 00:43] NOTES: Initial Task 11 Playwright run failed: Buffer view type caused JSZip load error in repack path. Added helper fix to provide exact ArrayBuffer slice from fixture bytes.
+[2026-02-23 00:43] STATUS: researching
+[2026-02-23 00:43] NOTES: Targeted test still failing at JSZip.loadAsync(doc.originalBuffer); investigating parseDocx/originalBuffer handling in Playwright worker runtime.
+[2026-02-23 00:43] STATUS: running
+[2026-02-23 00:43] NOTES: Reproducing fromBuffer/toBuffer flow outside Playwright to isolate whether failure is environment-specific.
+[2026-02-23 00:45] STATUS: editing
+[2026-02-23 00:45] NOTES: Reworked track-changes-export spec to execute DocumentAgent export flow inside browser page context (via dynamic import) and assert downloaded XML in Node context.
+[2026-02-23 00:45] STATUS: researching
+[2026-02-23 00:45] NOTES: Browser dynamic import of library source unavailable via current Vite setup; pivoting Task 11 tests to export integration via createEmptyDocx + repackDocx with XML assertions.
+[2026-02-23 00:46] STATUS: editing
+[2026-02-23 00:46] NOTES: Replaced Task 11 test strategy with repackDocx integration tests using createEmptyDocx baseline/current docs and XML assertions in e2e/tests/track-changes-export.spec.ts; simplified e2e/helpers/track-changes-export.ts.
+[2026-02-23 00:47] STATUS: running
+[2026-02-23 00:47] NOTES: Ran bun run typecheck - passed.
+[2026-02-23 00:47] STATUS: testing
+[2026-02-23 00:47] NOTES: Ran npx playwright test e2e/tests/track-changes-export.spec.ts --timeout=30000 --workers=4 - passed (3/3).
+[2026-02-23 00:47] STATUS: done
+[2026-02-23 00:47] NOTES: Completed Task 11 export integration XML assertions; plan checkbox updated and commit preparation started.

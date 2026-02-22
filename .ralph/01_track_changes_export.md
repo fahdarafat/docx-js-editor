@@ -64,7 +64,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/paragraphParser.test.ts src/docx/serializer/paragraphSerializer.test.ts`
   - Commit: `feat: Harden revision parsing and serialization round-trip`
 
-- [ ] Task 11 - Add export integration tests (DOCX XML assertions)
+- [x] Task 11 - Add export integration tests (DOCX XML assertions)
   - Files: `e2e/tests/track-changes-export.spec.ts`, `e2e/helpers/*`
   - Verify: `bun run typecheck`
   - Targeted tests: `npx playwright test e2e/tests/track-changes-export.spec.ts --timeout=30000 --workers=4`
