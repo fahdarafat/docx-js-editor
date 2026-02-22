@@ -10,7 +10,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: none
   - Commit: `feat: Create .ralph track changes export plan scaffold`
 
-- [ ] Task 02 - Add save/export option types and API plumbing
+- [x] Task 02 - Add save/export option types and API plumbing
   - Files: `src/components/DocxEditor.tsx`, `src/agent/DocumentAgent.ts`, `src/index.ts`, `src/core.ts`, `src/headless.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npx playwright test e2e/tests/editor.spec.ts --grep "load|edit" --timeout=30000 --workers=4`

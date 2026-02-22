@@ -98,6 +98,26 @@ export interface FormattedTextSegment {
   hyperlinkUrl?: string;
 }
 
+/**
+ * Track Changes export options (plumbing only in this phase).
+ */
+export interface TrackChangesExportOptions {
+  /** Enable tracked export output. */
+  enabled?: boolean;
+  /** Revision author for generated tracked changes. */
+  author?: string;
+  /** Optional revision timestamp (ISO 8601 string). */
+  date?: string;
+}
+
+/**
+ * Save/export options for DOCX generation.
+ */
+export interface SaveDocxOptions {
+  /** Track Changes export behavior. */
+  trackChanges?: TrackChangesExportOptions;
+}
+
 // ============================================================================
 // DOCUMENT AGENT CLASS
 // ============================================================================
@@ -669,9 +689,12 @@ export class DocumentAgent {
   /**
    * Export document to DOCX ArrayBuffer
    *
+   * Note: save options are plumbed in this phase and become functional
+   * in the tracked-export integration phase.
+   *
    * @returns Promise resolving to DOCX file as ArrayBuffer
    */
-  async toBuffer(): Promise<ArrayBuffer> {
+  async toBuffer(_options: SaveDocxOptions = {}): Promise<ArrayBuffer> {
     // If we have an original buffer, use repack (preserves styles, themes, etc.)
     // Otherwise, create a new DOCX from scratch
     if (this._document.originalBuffer) {
@@ -687,9 +710,10 @@ export class DocumentAgent {
    * @returns Promise resolving to DOCX file as Blob
    */
   async toBlob(
-    mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    options: SaveDocxOptions = {}
   ): Promise<Blob> {
-    const buffer = await this.toBuffer();
+    const buffer = await this.toBuffer(options);
     return new Blob([buffer], { type: mimeType });
   }
 
