@@ -46,7 +46,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/revisionizeParagraph.test.ts`
   - Commit: `feat: Generate insertion and deletion wrappers from paragraph diffs`
 
-- [ ] Task 08 - Build document-level revisionizer orchestration
+- [x] Task 08 - Build document-level revisionizer orchestration
   - Files: `src/docx/revisions/revisionizeDocument.ts`, `src/docx/revisions/index.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/revisionizeDocument.test.ts`
