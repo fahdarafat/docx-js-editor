@@ -719,16 +719,15 @@ export class DocumentAgent {
   /**
    * Export document to DOCX ArrayBuffer
    *
-   * Note: save options are plumbed in this phase and become functional
-   * in the tracked-export integration phase.
-   *
    * @returns Promise resolving to DOCX file as ArrayBuffer
    */
-  async toBuffer(_options: SaveDocxOptions = {}): Promise<ArrayBuffer> {
+  async toBuffer(options: SaveDocxOptions = {}): Promise<ArrayBuffer> {
     // If we have an original buffer, use repack (preserves styles, themes, etc.)
     // Otherwise, create a new DOCX from scratch
     if (this._document.originalBuffer) {
-      return repackDocx(this._document);
+      return repackDocx(this._document, {
+        trackChanges: options.trackChanges,
+      });
     }
     return createDocx(this._document);
   }

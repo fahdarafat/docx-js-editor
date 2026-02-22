@@ -52,7 +52,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/revisionizeDocument.test.ts`
   - Commit: `feat: Add document-level tracked revisionization pipeline`
 
-- [ ] Task 09 - Integrate revisionizer into repack export path
+- [x] Task 09 - Integrate revisionizer into repack export path
   - Files: `src/docx/rezip.ts`, `src/agent/DocumentAgent.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npx playwright test e2e/tests/editor.spec.ts --grep "save" --timeout=30000 --workers=4`

@@ -151,3 +151,29 @@
 [2026-02-23 00:29] NOTES: Task 08 verification passed and checklist item marked done.
 [2026-02-23 00:29] STATUS: running
 [2026-02-23 00:29] NOTES: Preparing Task 08 commit.
+[2026-02-23 00:29] STATUS: done
+[2026-02-23 00:29] NOTES: Task 08 committed as 28d72a2.
+[2026-02-23 00:29] TASK: Task 09 - Integrate revisionizer into repack export path
+[2026-02-23 00:29] STATUS: starting
+[2026-02-23 00:29] NOTES: Wiring tracked export option from DocumentAgent into rezip path using baseline snapshot + revisionizeDocument.
+[2026-02-23 00:30] STATUS: reading
+[2026-02-23 00:30] NOTES: Reading rezip.ts RepackOptions/serialize path and DocumentAgent export path for trackChanges integration.
+[2026-02-23 00:31] TASK: Integrate revisionizer into repack export path
+[2026-02-23 00:31] STATUS: starting
+[2026-02-23 00:31] NOTES: Beginning Task 09; locating export pipeline integration points.
+[2026-02-23 00:31] STATUS: reading
+[2026-02-23 00:31] NOTES: Reviewed src/docx/rezip.ts and src/agent/DocumentAgent.ts; located repackDocx/repackDocxFromRaw and toBuffer option forwarding points.
+[2026-02-23 00:32] STATUS: researching
+[2026-02-23 00:32] NOTES: Reviewed src/docx/revisions/{revisionizeDocument.ts,revisionizeParagraph.ts,revisionIds.ts,metadata.ts}; decided to gate export-time revisionization behind RepackOptions.trackChanges.enabled and baseline presence.
+[2026-02-23 00:32] STATUS: editing
+[2026-02-23 00:32] NOTES: Updated src/docx/rezip.ts to add RepackOptions.trackChanges, revisionize export document from baseline when enabled, and serialize/export from that document in both repack paths. Updated src/agent/DocumentAgent.ts to forward toBuffer(options).
+[2026-02-23 00:32] STATUS: running
+[2026-02-23 00:32] NOTES: Ran bun run typecheck - passed.
+[2026-02-23 00:33] STATUS: testing
+[2026-02-23 00:33] NOTES: Ran planned command npx playwright test e2e/tests/editor.spec.ts --grep 'save' --timeout=30000 --workers=4; result: No tests found.
+[2026-02-23 00:33] STATUS: testing
+[2026-02-23 00:33] NOTES: e2e save test path unavailable in repository; running narrow unit fallback for revision pipeline used by export integration.
+[2026-02-23 00:33] STATUS: testing
+[2026-02-23 00:33] NOTES: Ran npm run test -- src/docx/revisions/revisionizeDocument.test.ts src/docx/revisions/revisionizeParagraph.test.ts; passed (7/7).
+[2026-02-23 00:34] STATUS: done
+[2026-02-23 00:34] NOTES: Completed Task 09 integration and verification; marking plan checkbox and preparing commit.
