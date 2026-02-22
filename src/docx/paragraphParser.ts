@@ -38,6 +38,7 @@ import type {
   Deletion,
   MoveFrom,
   MoveTo,
+  ParagraphPropertyChange,
   TrackedChangeInfo,
   MathEquation,
 } from '../types/document';
@@ -673,6 +674,35 @@ function parseTrackedChangeInfo(node: XmlElement): TrackedChangeInfo {
   };
 }
 
+function parsePropertyChangeInfo(node: XmlElement): ParagraphPropertyChange['info'] {
+  const base = parseTrackedChangeInfo(node);
+  const rsid = (getAttribute(node, 'w', 'rsid') ?? '').trim();
+  return rsid.length > 0 ? { ...base, rsid } : base;
+}
+
+function parseParagraphPropertyChanges(
+  pPr: XmlElement | null,
+  theme: Theme | null,
+  styles: StyleMap | null,
+  currentFormatting: ParagraphFormatting | undefined
+): ParagraphPropertyChange[] | undefined {
+  if (!pPr) return undefined;
+
+  const changes = findChildren(pPr, 'w', 'pPrChange')
+    .map((changeElement): ParagraphPropertyChange => {
+      const previousPPr = findChild(changeElement, 'w', 'pPr');
+      return {
+        type: 'paragraphPropertyChange',
+        info: parsePropertyChangeInfo(changeElement),
+        previousFormatting: parseParagraphProperties(previousPPr, theme, styles ?? undefined),
+        currentFormatting,
+      };
+    })
+    .filter((change) => change.previousFormatting || change.currentFormatting);
+
+  return changes.length > 0 ? changes : undefined;
+}
+
 /**
  * Parse hyperlink element (w:hyperlink)
  *
@@ -1144,6 +1174,12 @@ export function parseParagraph(
   const pPr = findChild(node, 'w', 'pPr');
   if (pPr) {
     paragraph.formatting = parseParagraphProperties(pPr, theme, styles ?? undefined);
+    paragraph.propertyChanges = parseParagraphPropertyChanges(
+      pPr,
+      theme,
+      styles,
+      paragraph.formatting
+    );
 
     // Check for section properties within paragraph (marks end of a section)
     const sectPr = findChild(pPr, 'w', 'sectPr');

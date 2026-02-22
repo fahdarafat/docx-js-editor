@@ -82,7 +82,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/moveSerialization.test.ts`
   - Commit: `feat: Support moveFrom and moveTo tracked revisions`
 
-- [ ] Task 14 - Add paragraph/run property change revision support
+- [x] Task 14 - Add paragraph/run property change revision support
   - Files: `src/types/content.ts`, `src/docx/revisions/propertyChanges.ts`, serializer/parser files
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/propertyChanges.test.ts`

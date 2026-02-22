@@ -247,3 +247,39 @@
 [2026-02-23 00:57] NOTES: Ran npm run test -- src/docx/revisions/moveSerialization.test.ts - passed (3/3).
 [2026-02-23 00:57] STATUS: done
 [2026-02-23 00:57] NOTES: Completed Task 13 move serialization/parsing support and verification; updated plan checkbox and preparing commit.
+[2026-02-23 00:58] TASK: Add paragraph/run property change revision support
+[2026-02-23 00:58] STATUS: starting
+[2026-02-23 00:58] NOTES: Starting Task 14 after completing Task 13 commit 32eb7e2.
+[2026-02-23 00:59] STATUS: editing
+[2026-02-23 00:59] NOTES: Implementing Task 14: add property change generation module and parser/serializer support for pPrChange/rPrChange with targeted tests.
+[2026-02-23 01:01] TASK: Add paragraph and run property tracked changes
+[2026-02-23 01:01] STATUS: starting
+[2026-02-23 01:01] NOTES: Reloaded .ralph plan and git status; Task 14 is first unchecked.
+[2026-02-23 01:01] STATUS: reading
+[2026-02-23 01:01] NOTES: Read src/docx/runParser.ts and src/docx/paragraphParser.ts; run parser already parses w:rPrChange, paragraph parser still lacks w:pPrChange handling.
+[2026-02-23 01:03] STATUS: reading
+[2026-02-23 01:03] NOTES: Reviewed src/docx/serializer/runSerializer.ts and src/docx/serializer/paragraphSerializer.ts; neither emits w:rPrChange/w:pPrChange yet.
+[2026-02-23 01:03] STATUS: researching
+[2026-02-23 01:03] NOTES: Confirmed types already include RunPropertyChange and ParagraphPropertyChange in src/types/content.ts.
+[2026-02-23 01:03] STATUS: researching
+[2026-02-23 01:03] NOTES: Checked reference/ecma-376/part1/schemas/wml.xsd; CT_RPrChange and CT_PPrChange require child rPr/pPr respectively and live inside rPr/pPr.
+[2026-02-23 01:03] STATUS: editing
+[2026-02-23 01:03] NOTES: Patching src/docx/serializer/runSerializer.ts to serialize run property changes (w:rPrChange).
+[2026-02-23 01:03] STATUS: editing
+[2026-02-23 01:03] NOTES: Edited src/docx/serializer/runSerializer.ts to emit <w:rPrChange> with normalized id/author/date/rsid and preserve current rPr alongside property changes.
+[2026-02-23 01:04] STATUS: editing
+[2026-02-23 01:04] NOTES: Updated src/docx/paragraphParser.ts for w:pPrChange parsing and src/docx/serializer/paragraphSerializer.ts for w:pPrChange emission in pPr.
+[2026-02-23 01:04] STATUS: editing
+[2026-02-23 01:04] NOTES: Creating src/docx/revisions/propertyChanges.test.ts with detection tests and parser/serializer round-trip assertions for rPrChange/pPrChange.
+[2026-02-23 01:05] STATUS: editing
+[2026-02-23 01:05] NOTES: Added src/docx/revisions/propertyChanges.test.ts covering detect* helpers and OOXML round-trip assertions for pPrChange/rPrChange.
+[2026-02-23 01:05] STATUS: running
+[2026-02-23 01:05] NOTES: Running bun run typecheck for Task 14 fast verify.
+[2026-02-23 01:06] STATUS: running
+[2026-02-23 01:06] NOTES: bun run typecheck passed (tsc --noEmit).
+[2026-02-23 01:06] STATUS: testing
+[2026-02-23 01:06] NOTES: Running npm run test -- src/docx/revisions/propertyChanges.test.ts.
+[2026-02-23 01:06] STATUS: testing
+[2026-02-23 01:06] NOTES: Targeted tests passed in src/docx/revisions/propertyChanges.test.ts (4/4).
+[2026-02-23 01:06] STATUS: done
+[2026-02-23 01:06] NOTES: Task 14 implementation complete; updated .ralph/01_track_changes_export.md and ready to commit.
