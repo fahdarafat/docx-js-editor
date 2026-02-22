@@ -34,7 +34,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/revisionIds.test.ts`
   - Commit: `feat: Add revision ID allocator and metadata helpers`
 
-- [ ] Task 06 - Implement run-level text diff engine
+- [x] Task 06 - Implement run-level text diff engine
   - Files: `src/docx/revisions/runDiff.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/runDiff.test.ts`
