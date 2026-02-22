@@ -70,7 +70,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npx playwright test e2e/tests/track-changes-export.spec.ts --timeout=30000 --workers=4`
   - Commit: `feat: Add E2E tracked export XML assertions`
 
-- [ ] Task 12 - Add move detection phase (paragraph and run moves)
+- [x] Task 12 - Add move detection phase (paragraph and run moves)
   - Files: `src/docx/revisions/moveDetection.ts`, `src/docx/revisions/revisionizeDocument.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/moveDetection.test.ts`

@@ -219,3 +219,18 @@
 [2026-02-23 00:47] NOTES: Ran npx playwright test e2e/tests/track-changes-export.spec.ts --timeout=30000 --workers=4 - passed (3/3).
 [2026-02-23 00:47] STATUS: done
 [2026-02-23 00:47] NOTES: Completed Task 11 export integration XML assertions; plan checkbox updated and commit preparation started.
+[2026-02-23 00:48] TASK: Add move detection phase (paragraph and run moves)
+[2026-02-23 00:48] STATUS: starting
+[2026-02-23 00:48] NOTES: Starting Task 12 after completing Task 11 commit 6208c25.
+[2026-02-23 00:48] STATUS: reading
+[2026-02-23 00:48] NOTES: Confirmed Task 12 scope and beginning review of existing revisions pipeline for move detection integration.
+[2026-02-23 00:50] STATUS: editing
+[2026-02-23 00:50] NOTES: Implementing LCS-based paragraph/run move detection module and integrating gated move-detection phase into revisionizeDocument options.
+[2026-02-23 00:52] STATUS: editing
+[2026-02-23 00:52] NOTES: Added src/docx/revisions/moveDetection.ts + src/docx/revisions/moveDetection.test.ts; updated src/docx/revisions/revisionizeDocument.ts and src/docx/revisions/index.ts for move-detection phase integration.
+[2026-02-23 00:52] STATUS: running
+[2026-02-23 00:52] NOTES: Ran bun run typecheck - passed.
+[2026-02-23 00:52] STATUS: testing
+[2026-02-23 00:52] NOTES: Ran npm run test -- src/docx/revisions/moveDetection.test.ts - passed (4/4).
+[2026-02-23 00:53] STATUS: done
+[2026-02-23 00:53] NOTES: Completed Task 12 move-detection phase and verification; updated plan checkbox and preparing commit.
