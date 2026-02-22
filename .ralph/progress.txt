@@ -67,3 +67,19 @@
 [2026-02-23 00:13] NOTES: Completed Task 03 baseline snapshot persistence and marked checklist item done.
 [2026-02-23 00:13] STATUS: running
 [2026-02-23 00:13] NOTES: Preparing Task 03 commit.
+[2026-02-23 00:14] STATUS: done
+[2026-02-23 00:14] NOTES: Task 03 committed as 3673d4b.
+[2026-02-23 00:14] TASK: Task 04 - Add revision model primitives for export engine
+[2026-02-23 00:14] STATUS: starting
+[2026-02-23 00:14] NOTES: Refreshing context and reviewing tracked-change model types in src/types/content.ts and src/types/document.ts.
+[2026-02-23 00:14] STATUS: reading
+[2026-02-23 00:14] NOTES: Inspecting existing tracked-change types in src/types/content.ts and top-level document types.
+[2026-02-23 00:16] NOTES: Edited src/types/content.ts with move/property/structural revision primitives and attached optional property-change fields to run/paragraph/table types; updated src/types/document.ts re-exports.
+[2026-02-23 00:16] STATUS: running
+[2026-02-23 00:16] NOTES: Running bun run typecheck for Task 04.
+[2026-02-23 00:16] STATUS: testing
+[2026-02-23 00:16] NOTES: Targeted tests: none for Task 04 (type-model primitive additions only).
+[2026-02-23 00:16] STATUS: done
+[2026-02-23 00:16] NOTES: Completed Task 04 revision type primitives and marked checklist item done.
+[2026-02-23 00:16] STATUS: running
+[2026-02-23 00:16] NOTES: Preparing Task 04 commit.

@@ -22,7 +22,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npx playwright test e2e/tests/text-editing.spec.ts --grep "Type single character" --timeout=30000 --workers=4`
   - Commit: `feat: Persist baseline document snapshot for tracked export`
 
-- [ ] Task 04 - Add revision model primitives for export engine
+- [x] Task 04 - Add revision model primitives for export engine
   - Files: `src/types/content.ts`, `src/types/document.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: none
