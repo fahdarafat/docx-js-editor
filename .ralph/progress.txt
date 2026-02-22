@@ -120,3 +120,18 @@
 [2026-02-23 00:24] NOTES: Completed Task 06 run-level diff engine and marked checklist item done.
 [2026-02-23 00:24] STATUS: running
 [2026-02-23 00:24] NOTES: Preparing Task 06 commit.
+[2026-02-23 00:25] STATUS: done
+[2026-02-23 00:25] NOTES: Task 06 committed as 54336fd.
+[2026-02-23 00:25] TASK: Task 07 - Build paragraph revisionizer (w:ins/w:del)
+[2026-02-23 00:25] STATUS: starting
+[2026-02-23 00:25] NOTES: Implementing paragraph revisionization using runDiff + revision metadata/id helpers.
+[2026-02-23 00:25] STATUS: editing
+[2026-02-23 00:25] NOTES: Added src/docx/revisions/revisionizeParagraph.ts and revisionizeParagraph.test.ts with insertion/deletion wrapper generation over runDiff chunks.
+[2026-02-23 00:25] STATUS: running
+[2026-02-23 00:25] NOTES: Running bun run typecheck for Task 07.
+[2026-02-23 00:26] STATUS: testing
+[2026-02-23 00:26] NOTES: Running targeted unit test: npm run test -- src/docx/revisions/revisionizeParagraph.test.ts.
+[2026-02-23 00:26] STATUS: done
+[2026-02-23 00:26] NOTES: Task 07 verification passed (typecheck + revisionizeParagraph test) and checklist item marked done.
+[2026-02-23 00:26] STATUS: running
+[2026-02-23 00:26] NOTES: Preparing Task 07 commit.

@@ -40,7 +40,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/runDiff.test.ts`
   - Commit: `feat: Add run-level diff engine for tracked revisions`
 
-- [ ] Task 07 - Build paragraph revisionizer (`w:ins`/`w:del`)
+- [x] Task 07 - Build paragraph revisionizer (`w:ins`/`w:del`)
   - Files: `src/docx/revisions/revisionizeParagraph.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/revisionizeParagraph.test.ts`
