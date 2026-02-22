@@ -283,3 +283,32 @@
 [2026-02-23 01:06] NOTES: Targeted tests passed in src/docx/revisions/propertyChanges.test.ts (4/4).
 [2026-02-23 01:06] STATUS: done
 [2026-02-23 01:06] NOTES: Task 14 implementation complete; updated .ralph/01_track_changes_export.md and ready to commit.
+[2026-02-23 01:07] STATUS: done
+[2026-02-23 01:07] NOTES: Committed Task 14 as b646016 (feat: Add paragraph and run property tracked changes).
+[2026-02-23 01:07] TASK: Add table tracked revision support
+[2026-02-23 01:07] STATUS: starting
+[2026-02-23 01:07] NOTES: Starting next Ralph iteration after Task 14 commit b646016.
+[2026-02-23 01:08] STATUS: reading
+[2026-02-23 01:08] NOTES: Re-read .ralph/01_track_changes_export.md; Task 15 is first unchecked task.
+[2026-02-23 01:09] STATUS: reading
+[2026-02-23 01:09] NOTES: Reviewed src/docx/tableParser.ts and src/docx/serializer/tableSerializer.ts; no tblPrChange/trPrChange/tcPrChange or table structural change parsing/serialization exists yet.
+[2026-02-23 01:09] STATUS: researching
+[2026-02-23 01:09] NOTES: Confirmed in wml.xsd that trPr can include w:ins/w:del/trPrChange and tcPr can include w:cellIns/w:cellDel/w:cellMerge/tcPrChange; tblPr supports tblPrChange.
+[2026-02-23 01:09] STATUS: editing
+[2026-02-23 01:09] NOTES: Creating src/docx/revisions/tableChanges.ts for table/row/cell property and structural revision helpers.
+[2026-02-23 01:12] STATUS: editing
+[2026-02-23 01:12] NOTES: Added table revision helpers (src/docx/revisions/tableChanges.ts) and patched table parser/serializer for tblPrChange, trPrChange, tcPrChange, row ins/del, and cellIns/cellDel/cellMerge.
+[2026-02-23 01:12] STATUS: editing
+[2026-02-23 01:12] NOTES: Creating src/docx/revisions/tableChanges.test.ts for helper and OOXML round-trip coverage.
+[2026-02-23 01:13] STATUS: editing
+[2026-02-23 01:13] NOTES: Added src/docx/revisions/tableChanges.test.ts with helper coverage and table parser/serializer OOXML round-trip assertions.
+[2026-02-23 01:14] STATUS: running
+[2026-02-23 01:14] NOTES: Running bun run typecheck after Task 15 code changes.
+[2026-02-23 01:14] STATUS: running
+[2026-02-23 01:14] NOTES: bun run typecheck passed.
+[2026-02-23 01:14] STATUS: testing
+[2026-02-23 01:14] NOTES: Running npm run test -- src/docx/revisions/tableChanges.test.ts.
+[2026-02-23 01:14] STATUS: testing
+[2026-02-23 01:14] NOTES: Targeted tests passed in src/docx/revisions/tableChanges.test.ts (3/3).
+[2026-02-23 01:15] STATUS: done
+[2026-02-23 01:15] NOTES: Task 15 implementation complete; updated .ralph/01_track_changes_export.md and preparing commit.

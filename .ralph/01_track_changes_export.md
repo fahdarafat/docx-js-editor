@@ -88,7 +88,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/propertyChanges.test.ts`
   - Commit: `feat: Add paragraph and run property tracked changes`
 
-- [ ] Task 15 - Add table property/structure tracked revisions
+- [x] Task 15 - Add table property/structure tracked revisions
   - Files: table parser/serializer plus revision modules
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/tableChanges.test.ts`
