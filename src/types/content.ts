@@ -929,6 +929,11 @@ export interface MoveTo {
 }
 
 /**
+ * Run-level tracked wrappers represented in WordprocessingML.
+ */
+export type TrackedRunChange = Insertion | Deletion | MoveFrom | MoveTo;
+
+/**
  * Run property change (w:rPrChange)
  */
 export interface RunPropertyChange {

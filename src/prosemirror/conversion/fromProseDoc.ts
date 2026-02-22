@@ -311,6 +311,7 @@ function paragraphAttrsToFormatting(attrs: ParagraphAttrs): ParagraphFormatting 
  */
 function extractParagraphContent(paragraph: PMNode): ParagraphContent[] {
   const content: ParagraphContent[] = [];
+  const trackedChangeCounts = collectTrackedChangeCounts(paragraph);
 
   // Track current run being built
   let currentRun: Run | null = null;
@@ -375,11 +376,23 @@ function extractParagraphContent(paragraph: PMNode): ParagraphContent[] {
         author: (changeMark.attrs.author as string) || 'Unknown',
         date: (changeMark.attrs.date as string) || undefined,
       };
+      const revisionId = info.id;
+      const hasInsertionForId = (trackedChangeCounts.insertionById.get(revisionId) ?? 0) > 0;
+      const hasDeletionForId = (trackedChangeCounts.deletionById.get(revisionId) ?? 0) > 0;
+      const isMovePair = hasInsertionForId && hasDeletionForId;
 
       if (insertionMark) {
-        content.push({ type: 'insertion', info, content: [run] });
+        if (isMovePair) {
+          content.push({ type: 'moveTo', info, content: [run] });
+        } else {
+          content.push({ type: 'insertion', info, content: [run] });
+        }
       } else {
-        content.push({ type: 'deletion', info, content: [run] });
+        if (isMovePair) {
+          content.push({ type: 'moveFrom', info, content: [run] });
+        } else {
+          content.push({ type: 'deletion', info, content: [run] });
+        }
       }
       return;
     }
@@ -503,6 +516,38 @@ function extractParagraphContent(paragraph: PMNode): ParagraphContent[] {
   }
 
   return content;
+}
+
+function collectTrackedChangeCounts(paragraph: PMNode): {
+  insertionById: Map<number, number>;
+  deletionById: Map<number, number>;
+} {
+  const insertionById = new Map<number, number>();
+  const deletionById = new Map<number, number>();
+
+  paragraph.forEach((node) => {
+    const insertionMark = node.marks.find((mark) => mark.type.name === 'insertion');
+    const deletionMark = node.marks.find((mark) => mark.type.name === 'deletion');
+
+    if (insertionMark) {
+      const revisionId = Number(insertionMark.attrs.revisionId);
+      if (Number.isFinite(revisionId)) {
+        insertionById.set(revisionId, (insertionById.get(revisionId) ?? 0) + 1);
+      }
+    }
+
+    if (deletionMark) {
+      const revisionId = Number(deletionMark.attrs.revisionId);
+      if (Number.isFinite(revisionId)) {
+        deletionById.set(revisionId, (deletionById.get(revisionId) ?? 0) + 1);
+      }
+    }
+  });
+
+  return {
+    insertionById,
+    deletionById,
+  };
 }
 
 /**

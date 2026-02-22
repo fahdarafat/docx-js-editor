@@ -92,6 +92,7 @@ export type {
   CommentRangeEnd,
   MathEquation,
   TrackedChangeInfo,
+  TrackedRunChange,
   PropertyChangeInfo,
   Insertion,
   Deletion,

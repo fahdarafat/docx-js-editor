@@ -23,6 +23,8 @@ import type {
   InlineSdt,
   Insertion,
   Deletion,
+  MoveFrom,
+  MoveTo,
   TabStop,
   BorderSpec,
   ShadingProperties,
@@ -724,9 +726,12 @@ function serializeInlineSdt(sdt: InlineSdt): string {
 }
 
 /**
- * Serialize a tracked change (insertion or deletion) wrapper
+ * Serialize a tracked change wrapper (ins/del/moveFrom/moveTo)
  */
-function serializeTrackedChange(tag: 'ins' | 'del', change: Insertion | Deletion): string {
+function serializeTrackedChange(
+  tag: 'ins' | 'del' | 'moveFrom' | 'moveTo',
+  change: Insertion | Deletion | MoveFrom | MoveTo
+): string {
   const info = change.info;
   const normalizedId = Number.isInteger(info.id) && info.id >= 0 ? info.id : 0;
   const authorCandidate = typeof info.author === 'string' ? info.author.trim() : '';
@@ -738,7 +743,7 @@ function serializeTrackedChange(tag: 'ins' | 'del', change: Insertion | Deletion
   const contentXml = change.content
     .map((item) => {
       if (item.type === 'run') {
-        if (tag === 'del') {
+        if (tag === 'del' || tag === 'moveFrom') {
           return serializeRun(item)
             .replace(/<w:t\b/g, '<w:delText')
             .replace(/<\/w:t>/g, '</w:delText>')
@@ -782,6 +787,10 @@ function serializeParagraphContent(content: ParagraphContent): string {
       return serializeTrackedChange('ins', content);
     case 'deletion':
       return serializeTrackedChange('del', content);
+    case 'moveFrom':
+      return serializeTrackedChange('moveFrom', content);
+    case 'moveTo':
+      return serializeTrackedChange('moveTo', content);
     case 'mathEquation':
       // Round-trip the raw OMML XML directly
       return content.ommlXml || '';
@@ -913,7 +922,12 @@ export function getParagraphPlainText(paragraph: Paragraph): string {
           }
         }
       }
-    } else if (content.type === 'insertion' || content.type === 'deletion') {
+    } else if (
+      content.type === 'insertion' ||
+      content.type === 'deletion' ||
+      content.type === 'moveFrom' ||
+      content.type === 'moveTo'
+    ) {
       for (const item of content.content) {
         if (item.type === 'run') {
           for (const subItem of item.content) {

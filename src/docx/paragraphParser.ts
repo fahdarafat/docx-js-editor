@@ -36,6 +36,8 @@ import type {
   SdtProperties,
   Insertion,
   Deletion,
+  MoveFrom,
+  MoveTo,
   TrackedChangeInfo,
   MathEquation,
 } from '../types/document';
@@ -1023,9 +1025,43 @@ function parseParagraphContents(
         contents.push(deletion);
         break;
       }
+      case 'moveFrom': {
+        const moveFromInfo = parseTrackedChangeInfo(child);
+        const moveFromContent = parseParagraphContents(
+          child,
+          styles,
+          theme,
+          null,
+          rels,
+          media,
+          'deletion'
+        );
+        const moveFrom: MoveFrom = {
+          type: 'moveFrom',
+          info: moveFromInfo,
+          content: moveFromContent.filter(
+            (c): c is Run | Hyperlink => c.type === 'run' || c.type === 'hyperlink'
+          ),
+        };
+        contents.push(moveFrom);
+        break;
+      }
+
+      case 'moveTo': {
+        const moveToInfo = parseTrackedChangeInfo(child);
+        const moveToContent = parseParagraphContents(child, styles, theme, null, rels, media);
+        const moveTo: MoveTo = {
+          type: 'moveTo',
+          info: moveToInfo,
+          content: moveToContent.filter(
+            (c): c is Run | Hyperlink => c.type === 'run' || c.type === 'hyperlink'
+          ),
+        };
+        contents.push(moveTo);
+        break;
+      }
+
       case 'smartTag':
-      case 'moveTo':
-      case 'moveFrom':
         // Other track changes - skip for now
         break;
 

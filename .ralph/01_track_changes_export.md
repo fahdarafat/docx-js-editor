@@ -76,7 +76,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/moveDetection.test.ts`
   - Commit: `feat: Add move detection for tracked export revisions`
 
-- [ ] Task 13 - Add move serialization/parsing support
+- [x] Task 13 - Add move serialization/parsing support
   - Files: `src/types/content.ts`, `src/docx/paragraphParser.ts`, `src/docx/serializer/paragraphSerializer.ts`, `src/prosemirror/conversion/*`
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/revisions/moveSerialization.test.ts`

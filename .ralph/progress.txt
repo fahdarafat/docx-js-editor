@@ -234,3 +234,16 @@
 [2026-02-23 00:52] NOTES: Ran npm run test -- src/docx/revisions/moveDetection.test.ts - passed (4/4).
 [2026-02-23 00:53] STATUS: done
 [2026-02-23 00:53] NOTES: Completed Task 12 move-detection phase and verification; updated plan checkbox and preparing commit.
+[2026-02-23 00:53] TASK: Add move serialization/parsing support
+[2026-02-23 00:53] STATUS: starting
+[2026-02-23 00:53] NOTES: Starting Task 13 after completing Task 12 commit aa36cf6.
+[2026-02-23 00:53] STATUS: reading
+[2026-02-23 00:53] NOTES: Confirmed Task 13 scope and starting gap analysis across parser/serializer and prosemirror conversion for moveFrom/moveTo wrappers.
+[2026-02-23 00:56] STATUS: editing
+[2026-02-23 00:56] NOTES: Added moveFrom/moveTo parser support (src/docx/paragraphParser.ts), serializer support (src/docx/serializer/paragraphSerializer.ts), PM conversion handling (src/prosemirror/conversion/toProseDoc.ts + fromProseDoc.ts), tracked run change alias in src/types/content.ts, and tests in src/docx/revisions/moveSerialization.test.ts.
+[2026-02-23 00:57] STATUS: running
+[2026-02-23 00:57] NOTES: Ran bun run typecheck - passed.
+[2026-02-23 00:57] STATUS: testing
+[2026-02-23 00:57] NOTES: Ran npm run test -- src/docx/revisions/moveSerialization.test.ts - passed (3/3).
+[2026-02-23 00:57] STATUS: done
+[2026-02-23 00:57] NOTES: Completed Task 13 move serialization/parsing support and verification; updated plan checkbox and preparing commit.
