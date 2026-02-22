@@ -22,7 +22,7 @@ import {
   Suspense,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import type { Document, Theme, HeaderFooter } from '../types/document';
+import type { Document, DocumentSnapshot, Theme, HeaderFooter } from '../types/document';
 
 import { Toolbar, type SelectionFormatting, type FormattingAction } from './Toolbar';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
@@ -347,6 +347,32 @@ interface EditorState {
   } | null;
 }
 
+function clonePackageSnapshot(pkg: Document['package']): Document['package'] {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(pkg);
+  }
+  return pkg;
+}
+
+function createBaselineSnapshot(document: Document): DocumentSnapshot {
+  return {
+    package: clonePackageSnapshot(document.package),
+    originalBuffer: document.originalBuffer,
+    templateVariables: document.templateVariables ? [...document.templateVariables] : undefined,
+    warnings: document.warnings ? [...document.warnings] : undefined,
+  };
+}
+
+function withBaselineDocument(document: Document, fallbackBaseline?: DocumentSnapshot): Document {
+  if (document.baselineDocument) {
+    return document;
+  }
+  return {
+    ...document,
+    baselineDocument: fallbackBaseline ?? createBaselineSnapshot(document),
+  };
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -474,6 +500,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Keep history.state accessible in stable callbacks without stale closures
   const historyStateRef = useRef(history.state);
   historyStateRef.current = history.state;
+  // Preserve immutable baseline snapshot for export-time diffing
+  const baselineSnapshotRef = useRef<DocumentSnapshot | undefined>(
+    initialDocument?.baselineDocument
+  );
   // Track current border color/width for border presets (like Google Docs)
   const borderSpecRef = useRef({ style: 'single', size: 4, color: { rgb: '000000' } });
 
@@ -549,10 +579,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   useEffect(() => {
     if (!documentBuffer) {
       if (initialDocument) {
-        history.reset(initialDocument);
+        const docWithBaseline = withBaselineDocument(initialDocument, baselineSnapshotRef.current);
+        baselineSnapshotRef.current = docWithBaseline.baselineDocument;
+        history.reset(docWithBaseline);
         setState((prev) => ({ ...prev, isLoading: false }));
         // Load fonts for initial document
-        loadDocumentFonts(initialDocument).catch((err) => {
+        loadDocumentFonts(docWithBaseline).catch((err) => {
           console.warn('Failed to load document fonts:', err);
         });
       }
@@ -564,8 +596,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     const parseDocument = async () => {
       try {
         const doc = await parseDocx(documentBuffer);
+        const docWithBaseline = withBaselineDocument(doc, baselineSnapshotRef.current);
+        baselineSnapshotRef.current = docWithBaseline.baselineDocument;
         // Reset history with parsed document (clears undo/redo stacks)
-        history.reset(doc);
+        history.reset(docWithBaseline);
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -573,13 +607,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }));
 
         // Extract initial variable values
-        if (doc.package.document) {
-          const variables = extractVariables(doc);
+        if (docWithBaseline.package.document) {
+          const variables = extractVariables(docWithBaseline);
           setState((prev) => ({ ...prev, variableValues: variables }));
         }
 
         // Load fonts used in the document from Google Fonts
-        loadDocumentFonts(doc).catch((err) => {
+        loadDocumentFonts(docWithBaseline).catch((err) => {
           console.warn('Failed to load document fonts:', err);
         });
       } catch (error) {
@@ -599,7 +633,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Update document when initialDocument changes
   useEffect(() => {
     if (initialDocument && !documentBuffer) {
-      history.reset(initialDocument);
+      const docWithBaseline = withBaselineDocument(initialDocument, baselineSnapshotRef.current);
+      baselineSnapshotRef.current = docWithBaseline.baselineDocument;
+      history.reset(docWithBaseline);
     }
   }, [initialDocument, documentBuffer]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -620,11 +656,21 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     return cleanup;
   }, [onFontsLoadedCallback]);
 
+  const pushDocumentWithBaseline = useCallback(
+    (document: Document) => {
+      const documentWithBaseline = withBaselineDocument(document, baselineSnapshotRef.current);
+      baselineSnapshotRef.current = documentWithBaseline.baselineDocument;
+      history.push(documentWithBaseline);
+      return documentWithBaseline;
+    },
+    [history]
+  );
+
   // Handle document change
   const handleDocumentChange = useCallback(
     (newDocument: Document) => {
-      history.push(newDocument);
-      onChange?.(newDocument);
+      const documentWithBaseline = pushDocumentWithBaseline(newDocument);
+      onChange?.(documentWithBaseline);
       // Update outline headings if sidebar is open
       if (showOutlineRef.current) {
         const view = pagedEditorRef.current?.getView();
@@ -633,7 +679,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
       }
     },
-    [onChange, history]
+    [onChange, pushDocumentWithBaseline]
   );
 
   // Handle selection changes from ProseMirror
@@ -1123,7 +1169,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           endnotePr,
         },
       };
-      history.push({
+      pushDocumentWithBaseline({
         ...history.state,
         package: {
           ...history.state.package,
@@ -1131,7 +1177,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         },
       });
     },
-    [history]
+    [history, pushDocumentWithBaseline]
   );
 
   // Handle table action from Toolbar - use ProseMirror commands
@@ -1993,10 +2039,10 @@ body { background: white; }
             : pkg.document,
         },
       };
-      history.push(newDoc);
+      pushDocumentWithBaseline(newDoc);
       setHfEditPosition(position);
     },
-    [headerContent, footerContent, history]
+    [headerContent, footerContent, history, pushDocumentWithBaseline]
   );
 
   // Handle header/footer save — update document package with edited content
@@ -2035,12 +2081,12 @@ body { background: white; }
             [mapKey]: newMap,
           },
         };
-        history.push(newDoc);
+        pushDocumentWithBaseline(newDoc);
       }
 
       setHfEditPosition(null);
     },
-    [hfEditPosition, history]
+    [hfEditPosition, history, pushDocumentWithBaseline]
   );
 
   // Handle body click while in HF editing mode — save + close
@@ -2092,11 +2138,11 @@ body { background: white; }
             : pkg.document,
         },
       };
-      history.push(newDoc);
+      pushDocumentWithBaseline(newDoc);
     }
 
     setHfEditPosition(null);
-  }, [hfEditPosition, history]);
+  }, [hfEditPosition, history, pushDocumentWithBaseline]);
 
   // Get the DOM element for the header/footer area on the first page
   const getHfTargetElement = useCallback((pos: 'header' | 'footer'): HTMLElement | null => {

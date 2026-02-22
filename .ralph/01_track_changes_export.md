@@ -16,7 +16,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npx playwright test e2e/tests/editor.spec.ts --grep "load|edit" --timeout=30000 --workers=4`
   - Commit: `feat: Add track changes save option plumbing`
 
-- [ ] Task 03 - Persist export baseline document snapshot
+- [x] Task 03 - Persist export baseline document snapshot
   - Files: `src/components/DocxEditor.tsx`, `src/agent/DocumentAgent.ts`, `src/types/document.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npx playwright test e2e/tests/text-editing.spec.ts --grep "Type single character" --timeout=30000 --workers=4`

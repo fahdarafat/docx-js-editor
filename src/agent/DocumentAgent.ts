@@ -14,6 +14,7 @@
 
 import type {
   Document,
+  DocumentSnapshot,
   DocumentBody,
   Paragraph,
   Table,
@@ -147,6 +148,35 @@ export class DocumentAgent {
   private _document: Document;
   private _pendingVariables: Record<string, string>;
 
+  private static clonePackageSnapshot(pkg: Document['package']): Document['package'] {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(pkg);
+    }
+    return pkg;
+  }
+
+  private static createBaselineSnapshot(document: Document): DocumentSnapshot {
+    return {
+      package: DocumentAgent.clonePackageSnapshot(document.package),
+      originalBuffer: document.originalBuffer,
+      templateVariables: document.templateVariables ? [...document.templateVariables] : undefined,
+      warnings: document.warnings ? [...document.warnings] : undefined,
+    };
+  }
+
+  private static withBaselineDocument(
+    document: Document,
+    fallbackBaseline?: DocumentSnapshot
+  ): Document {
+    if (document.baselineDocument) {
+      return document;
+    }
+    return {
+      ...document,
+      baselineDocument: fallbackBaseline ?? DocumentAgent.createBaselineSnapshot(document),
+    };
+  }
+
   /**
    * Create a new DocumentAgent
    *
@@ -162,7 +192,7 @@ export class DocumentAgent {
         originalBuffer: source instanceof ArrayBuffer ? source : (source.buffer as ArrayBuffer),
       };
     } else {
-      this._document = source;
+      this._document = DocumentAgent.withBaselineDocument(source);
     }
     this._pendingVariables = {};
   }
@@ -725,7 +755,11 @@ export class DocumentAgent {
    */
   executeCommands(commands: AgentCommand[]): DocumentAgent {
     const newDoc = executeCommands(this._document, commands);
-    return new DocumentAgent(newDoc);
+    const docWithBaseline = DocumentAgent.withBaselineDocument(
+      newDoc,
+      this._document.baselineDocument
+    );
+    return new DocumentAgent(docWithBaseline);
   }
 
   // ==========================================================================
@@ -737,7 +771,11 @@ export class DocumentAgent {
    */
   private _executeCommand(command: AgentCommand): DocumentAgent {
     const newDoc = executeCommand(this._document, command);
-    const newAgent = new DocumentAgent(newDoc);
+    const docWithBaseline = DocumentAgent.withBaselineDocument(
+      newDoc,
+      this._document.baselineDocument
+    );
+    const newAgent = new DocumentAgent(docWithBaseline);
     newAgent._pendingVariables = { ...this._pendingVariables };
     return newAgent;
   }
