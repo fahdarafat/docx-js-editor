@@ -100,7 +100,7 @@ export interface FormattedTextSegment {
 }
 
 /**
- * Track Changes export options (plumbing only in this phase).
+ * Track Changes export options.
  */
 export interface TrackChangesExportOptions {
   /** Enable tracked export output. */

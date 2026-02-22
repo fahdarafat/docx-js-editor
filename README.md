@@ -117,6 +117,40 @@ ref.current.scrollToPage(3); // Scroll to page 3
 ref.current.print(); // Print the document
 ```
 
+## Track Changes Export
+
+Track Changes export is opt-in and disabled by default. Standard saves remain unchanged unless you pass `trackChanges.enabled: true`.
+
+```tsx
+const buffer = await ref.current?.save({
+  trackChanges: {
+    enabled: true,
+    author: 'Reviewer Name',
+    date: new Date().toISOString(),
+  },
+});
+```
+
+Headless/API usage:
+
+```ts
+import { DocumentAgent } from '@eigenpal/docx-js-editor';
+
+const agent = await DocumentAgent.fromBuffer(buffer);
+const trackedBuffer = await agent.toBuffer({
+  trackChanges: {
+    enabled: true,
+    author: 'Reviewer Name',
+  },
+});
+```
+
+Notes:
+
+- Tracked export currently generates insertion/deletion revisions from export-time diffing.
+- If no baseline snapshot is available, export falls back to normal (non-tracked) output.
+- See [`docs/TRACK_CHANGES_EXPORT.md`](docs/TRACK_CHANGES_EXPORT.md) for full workflow details.
+
 ## Read-Only Preview
 
 Use `readOnly` for a preview-only viewer. This disables editing, caret, and selection UI.
@@ -152,6 +186,7 @@ See [docs/PLUGINS.md](docs/PLUGINS.md) for the full plugin API, including how to
 - Full WYSIWYG editing with Microsoft Word fidelity
 - Text and paragraph formatting (bold, italic, fonts, colors, alignment, spacing)
 - Tables, images, hyperlinks
+- Optional Track Changes export during save
 - Extensible plugin architecture
 - Undo/redo, find & replace, keyboard shortcuts
 - Print preview

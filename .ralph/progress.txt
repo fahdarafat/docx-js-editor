@@ -312,3 +312,24 @@
 [2026-02-23 01:14] NOTES: Targeted tests passed in src/docx/revisions/tableChanges.test.ts (3/3).
 [2026-02-23 01:15] STATUS: done
 [2026-02-23 01:15] NOTES: Task 15 implementation complete; updated .ralph/01_track_changes_export.md and preparing commit.
+[2026-02-23 01:16] STATUS: done
+[2026-02-23 01:16] NOTES: Committed Task 15 as 57a32d7 (feat: Add table tracked revision support).
+[2026-02-23 01:16] TASK: Document tracked changes export workflow
+[2026-02-23 01:16] STATUS: starting
+[2026-02-23 01:16] NOTES: Starting Task 16 after Task 15 commit 57a32d7.
+[2026-02-23 01:17] STATUS: reading
+[2026-02-23 01:17] NOTES: Reviewed README.md, DocumentAgent save/export types, and e2e/tests/track-changes-export.spec.ts to document current tracked export behavior accurately.
+[2026-02-23 01:18] STATUS: editing
+[2026-02-23 01:18] NOTES: Updated README.md with Track Changes export usage examples and added docs/TRACK_CHANGES_EXPORT.md workflow guide.
+[2026-02-23 01:18] STATUS: editing
+[2026-02-23 01:18] NOTES: Adjusted src/agent/DocumentAgent.ts TrackChangesExportOptions comment to match implemented behavior.
+[2026-02-23 01:18] STATUS: running
+[2026-02-23 01:18] NOTES: Running bun run typecheck for Task 16 verification.
+[2026-02-23 01:19] STATUS: running
+[2026-02-23 01:19] NOTES: bun run typecheck passed.
+[2026-02-23 01:19] STATUS: testing
+[2026-02-23 01:19] NOTES: Running npx playwright test e2e/tests/track-changes-export.spec.ts --timeout=30000 --workers=4.
+[2026-02-23 01:19] STATUS: testing
+[2026-02-23 01:19] NOTES: Playwright targeted test passed (e2e/tests/track-changes-export.spec.ts, 3/3).
+[2026-02-23 01:19] STATUS: done
+[2026-02-23 01:19] NOTES: Task 16 implementation complete; updated README/docs and plan, preparing final commit.

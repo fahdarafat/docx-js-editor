@@ -94,7 +94,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npm run test -- src/docx/revisions/tableChanges.test.ts`
   - Commit: `feat: Add table tracked revision support`
 
-- [ ] Task 16 - Documentation and usage examples
+- [x] Task 16 - Documentation and usage examples
   - Files: `README.md`, `docs/*`
   - Verify: `bun run typecheck`
   - Targeted tests: `npx playwright test e2e/tests/track-changes-export.spec.ts --timeout=30000 --workers=4`
