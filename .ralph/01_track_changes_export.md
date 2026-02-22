@@ -58,7 +58,7 @@ Implement export-time Track Changes generation in incremental Ralph iterations, 
   - Targeted tests: `npx playwright test e2e/tests/editor.spec.ts --grep "save" --timeout=30000 --workers=4`
   - Commit: `feat: Integrate tracked revisionization into DOCX repack export`
 
-- [ ] Task 10 - Add parser/serializer hardening for generated revision output
+- [x] Task 10 - Add parser/serializer hardening for generated revision output
   - Files: `src/docx/paragraphParser.ts`, `src/docx/serializer/paragraphSerializer.ts`
   - Verify: `bun run typecheck`
   - Targeted tests: `npm run test -- src/docx/paragraphParser.test.ts src/docx/serializer/paragraphSerializer.test.ts`

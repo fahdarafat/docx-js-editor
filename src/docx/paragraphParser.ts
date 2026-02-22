@@ -622,6 +622,55 @@ function getLocalName(name: string | undefined): string {
   return colonIndex >= 0 ? name.substring(colonIndex + 1) : name;
 }
 
+type TrackedChangeParseContext = 'default' | 'deletion';
+
+function replaceLocalName(name: string | undefined, localName: string): string {
+  if (!name) {
+    return `w:${localName}`;
+  }
+  const colonIndex = name.indexOf(':');
+  if (colonIndex < 0) {
+    return localName;
+  }
+  return `${name.substring(0, colonIndex + 1)}${localName}`;
+}
+
+function normalizeDeletionContentElement(node: XmlElement): XmlElement {
+  if (node.type !== 'element') {
+    return node;
+  }
+
+  const localName = getLocalName(node.name);
+  let mappedName = node.name;
+
+  if (localName === 'delText') {
+    mappedName = replaceLocalName(node.name, 't');
+  } else if (localName === 'delInstrText') {
+    mappedName = replaceLocalName(node.name, 'instrText');
+  }
+
+  return {
+    ...node,
+    name: mappedName,
+    elements: node.elements?.map(normalizeDeletionContentElement),
+  };
+}
+
+function parseTrackedChangeInfo(node: XmlElement): TrackedChangeInfo {
+  const rawId = getAttribute(node, 'w', 'id');
+  const parsedId = rawId ? parseInt(rawId, 10) : 0;
+  const rawAuthor = getAttribute(node, 'w', 'author');
+  const rawDate = getAttribute(node, 'w', 'date');
+  const author = rawAuthor?.trim() ?? '';
+  const date = rawDate?.trim() ?? '';
+
+  return {
+    id: Number.isInteger(parsedId) && parsedId >= 0 ? parsedId : 0,
+    author: author.length > 0 ? author : 'Unknown',
+    date: date.length > 0 ? date : undefined,
+  };
+}
+
 /**
  * Parse hyperlink element (w:hyperlink)
  *
@@ -777,7 +826,8 @@ function parseParagraphContents(
   theme: Theme | null,
   _numbering: NumberingMap | null,
   rels: RelationshipMap | null,
-  media: Map<string, MediaFile> | null
+  media: Map<string, MediaFile> | null,
+  trackedContext: TrackedChangeParseContext = 'default'
 ): ParagraphContent[] {
   const contents: ParagraphContent[] = [];
   const children = getChildElements(paraElement);
@@ -797,7 +847,9 @@ function parseParagraphContents(
     switch (localName) {
       case 'r': {
         // Check for field characters in this run
-        const run = parseRun(child, styles, theme, rels, media);
+        const runElement =
+          trackedContext === 'deletion' ? normalizeDeletionContentElement(child) : child;
+        const run = parseRun(runElement, styles, theme, rels, media);
 
         // Look for field characters
         let hasFieldBegin = false;
@@ -913,7 +965,15 @@ function parseParagraphContents(
             (el.name === 'w:sdtContent' || el.name?.endsWith(':sdtContent'))
         );
         if (sdtContentEl) {
-          const sdtParsed = parseParagraphContents(sdtContentEl, styles, theme, null, rels, media);
+          const sdtParsed = parseParagraphContents(
+            sdtContentEl,
+            styles,
+            theme,
+            null,
+            rels,
+            media,
+            trackedContext
+          );
           const properties = parseSdtProperties(sdtPr ?? null);
           const inlineSdt: InlineSdt = {
             type: 'inlineSdt',
@@ -929,11 +989,7 @@ function parseParagraphContents(
 
       case 'ins': {
         // Track change: insertion — parse content and wrap
-        const insInfo: TrackedChangeInfo = {
-          id: parseInt(getAttribute(child, 'w', 'id') ?? '0', 10),
-          author: getAttribute(child, 'w', 'author') ?? 'Unknown',
-          date: getAttribute(child, 'w', 'date') ?? undefined,
-        };
+        const insInfo = parseTrackedChangeInfo(child);
         const insContent = parseParagraphContents(child, styles, theme, null, rels, media);
         const insertion: Insertion = {
           type: 'insertion',
@@ -947,12 +1003,16 @@ function parseParagraphContents(
       }
       case 'del': {
         // Track change: deletion — parse content and wrap
-        const delInfo: TrackedChangeInfo = {
-          id: parseInt(getAttribute(child, 'w', 'id') ?? '0', 10),
-          author: getAttribute(child, 'w', 'author') ?? 'Unknown',
-          date: getAttribute(child, 'w', 'date') ?? undefined,
-        };
-        const delContent = parseParagraphContents(child, styles, theme, null, rels, media);
+        const delInfo = parseTrackedChangeInfo(child);
+        const delContent = parseParagraphContents(
+          child,
+          styles,
+          theme,
+          null,
+          rels,
+          media,
+          'deletion'
+        );
         const deletion: Deletion = {
           type: 'deletion',
           info: delInfo,

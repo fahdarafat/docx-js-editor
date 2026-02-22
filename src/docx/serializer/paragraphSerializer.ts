@@ -728,12 +728,25 @@ function serializeInlineSdt(sdt: InlineSdt): string {
  */
 function serializeTrackedChange(tag: 'ins' | 'del', change: Insertion | Deletion): string {
   const info = change.info;
-  const attrs = [`w:id="${info.id}"`, `w:author="${escapeXml(info.author)}"`];
-  if (info.date) attrs.push(`w:date="${escapeXml(info.date)}"`);
+  const normalizedId = Number.isInteger(info.id) && info.id >= 0 ? info.id : 0;
+  const authorCandidate = typeof info.author === 'string' ? info.author.trim() : '';
+  const normalizedAuthor = authorCandidate.length > 0 ? authorCandidate : 'Unknown';
+  const normalizedDate = typeof info.date === 'string' ? info.date.trim() : undefined;
+  const attrs = [`w:id="${normalizedId}"`, `w:author="${escapeXml(normalizedAuthor)}"`];
+  if (normalizedDate) attrs.push(`w:date="${escapeXml(normalizedDate)}"`);
 
   const contentXml = change.content
     .map((item) => {
-      if (item.type === 'run') return serializeRun(item);
+      if (item.type === 'run') {
+        if (tag === 'del') {
+          return serializeRun(item)
+            .replace(/<w:t\b/g, '<w:delText')
+            .replace(/<\/w:t>/g, '</w:delText>')
+            .replace(/<w:instrText\b/g, '<w:delInstrText')
+            .replace(/<\/w:instrText>/g, '</w:delInstrText>');
+        }
+        return serializeRun(item);
+      }
       if (item.type === 'hyperlink') return serializeHyperlink(item);
       return '';
     })
