@@ -81,7 +81,11 @@ const FootnotePropertiesDialog = lazy(() =>
 );
 import { MaterialSymbol } from './ui/Icons';
 import { getBuiltinTableStyle, type TableStylePreset } from './ui/TableStyleGallery';
-import { DocumentAgent, type SaveDocxOptions } from '../agent/DocumentAgent';
+import {
+  DocumentAgent,
+  type SaveDocxOptions,
+  type TrackChangesExportOptions,
+} from '../agent/DocumentAgent';
 import {
   DefaultLoadingIndicator,
   DefaultPlaceholder,
@@ -200,6 +204,8 @@ export interface DocxEditorProps {
   document?: Document | null;
   /** Callback when document is saved */
   onSave?: (buffer: ArrayBuffer) => void;
+  /** Default tracked export configuration used by save() */
+  trackChanges?: TrackChangesExportOptions;
   /** Callback when document changes */
   onChange?: (document: Document) => void;
   /** Callback when selection changes */
@@ -291,7 +297,7 @@ export interface DocxEditorRef {
   /** Get the editor ref */
   getEditorRef: () => PagedEditorRef | null;
   /** Save the document to buffer */
-  save: (options?: SaveDocxOptions) => Promise<ArrayBuffer | null>;
+  save: () => Promise<ArrayBuffer | null>;
   /** Set zoom level */
   setZoom: (zoom: number) => void;
   /** Get current zoom level */
@@ -385,6 +391,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     documentBuffer,
     document: initialDocument,
     onSave,
+    trackChanges,
     onChange,
     onSelectionChange,
     onError,
@@ -1678,21 +1685,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   }, []);
 
   // Handle save
-  const handleSave = useCallback(
-    async (options?: SaveDocxOptions): Promise<ArrayBuffer | null> => {
-      if (!agentRef.current) return null;
+  const handleSave = useCallback(async (): Promise<ArrayBuffer | null> => {
+    if (!agentRef.current) return null;
 
-      try {
-        const buffer = await agentRef.current.toBuffer(options);
-        onSave?.(buffer);
-        return buffer;
-      } catch (error) {
-        onError?.(error instanceof Error ? error : new Error('Failed to save document'));
-        return null;
-      }
-    },
-    [onSave, onError]
-  );
+    try {
+      const saveOptions: SaveDocxOptions = { trackChanges };
+      const buffer = await agentRef.current.toBuffer(saveOptions);
+      onSave?.(buffer);
+      return buffer;
+    } catch (error) {
+      onError?.(error instanceof Error ? error : new Error('Failed to save document'));
+      return null;
+    }
+  }, [onSave, onError, trackChanges]);
 
   // Handle error from editor
   const handleEditorError = useCallback(

@@ -21,7 +21,6 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { DocxEditor, type DocxEditorProps, type DocxEditorRef } from './components/DocxEditor';
-import type { SaveDocxOptions } from './agent/DocumentAgent';
 import type { DocxInput } from './utils/docxInput';
 import type { Document } from './types/document';
 
@@ -36,7 +35,7 @@ export type RenderAsyncOptions = Omit<DocxEditorProps, 'documentBuffer' | 'docum
  */
 export interface DocxEditorHandle {
   /** Save the document and return the DOCX as an ArrayBuffer. */
-  save: (options?: SaveDocxOptions) => Promise<ArrayBuffer | null>;
+  save: () => Promise<ArrayBuffer | null>;
   /** Get the current parsed document model. */
   getDocument: () => Document | null;
   /** Focus the editor. */
@@ -72,7 +71,7 @@ export function renderAsync(
     }
 
     const handle: DocxEditorHandle = {
-      save: (options?: SaveDocxOptions) => ref.current?.save(options) ?? Promise.resolve(null),
+      save: () => ref.current?.save() ?? Promise.resolve(null),
       getDocument: () => ref.current?.getDocument() ?? null,
       focus: () => ref.current?.focus(),
       setZoom: (z) => ref.current?.setZoom(z),
