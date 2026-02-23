@@ -4,12 +4,35 @@ This project supports opt-in DOCX export with Word Track Changes markup.
 
 Default behavior is unchanged:
 
-- `save()` / `toBuffer()` without `trackChanges.enabled: true` produces normal non-tracked output.
+- `DocxEditorRef.save()` produces normal non-tracked output unless `DocxEditor` is configured with `trackChanges.enabled: true`.
+- `DocumentAgent.toBuffer()` / `toBlob()` without `trackChanges.enabled: true` produces normal non-tracked output.
 - Tracked export only runs when explicitly enabled.
 
 ## API Surface
 
-`SaveDocxOptions`:
+`TrackChangesExportOptions`:
+
+```ts
+interface TrackChangesExportOptions {
+  enabled?: boolean;
+  author?: string;
+  date?: string; // ISO 8601 recommended
+}
+```
+
+React API:
+
+```ts
+interface DocxEditorProps {
+  trackChanges?: TrackChangesExportOptions;
+}
+
+interface DocxEditorRef {
+  save(): Promise<ArrayBuffer | null>;
+}
+```
+
+Headless/API options:
 
 ```ts
 interface SaveDocxOptions {
@@ -23,7 +46,7 @@ interface SaveDocxOptions {
 
 Available on:
 
-- `DocxEditorRef.save(options?)`
+- `DocxEditor` prop: `trackChanges`
 - `DocumentAgent.toBuffer(options?)`
 - `DocumentAgent.toBlob(mimeType?, options?)`
 - `repackDocx(document, options?)`
@@ -31,13 +54,17 @@ Available on:
 ## React Usage
 
 ```tsx
-const buffer = await editorRef.current?.save({
-  trackChanges: {
+<DocxEditor
+  ref={editorRef}
+  documentBuffer={file}
+  trackChanges={{
     enabled: true,
-    author: 'Reviewer Name',
+    author: 'John Doe',
     date: new Date().toISOString(),
-  },
-});
+  }}
+/>;
+
+const buffer = await editorRef.current?.save();
 ```
 
 ## Headless Usage
@@ -49,7 +76,7 @@ const agent = await DocumentAgent.fromBuffer(originalBuffer);
 const trackedBuffer = await agent.toBuffer({
   trackChanges: {
     enabled: true,
-    author: 'Reviewer Name',
+    author: 'John Doe',
   },
 });
 ```
@@ -60,7 +87,7 @@ When tracked export is enabled, the export pipeline compares the current documen
 
 Current guarantees:
 
-- Existing save flow remains backward-compatible.
+- Standard save output remains non-tracked unless explicitly enabled.
 - Author/date metadata is attached to generated revisions.
 - If no baseline snapshot exists, export safely falls back to normal non-tracked output.
 

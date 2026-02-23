@@ -422,7 +422,7 @@ export function App() {
           documentBuffer={documentBuffer}
           trackChanges={{
             enabled: true,
-            author: 'Manual Tester',
+            author: 'John Doe',
             date: new Date().toISOString(),
           }}
           onChange={handleDocumentChange}
