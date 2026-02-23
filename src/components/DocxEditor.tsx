@@ -596,7 +596,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     const parseDocument = async () => {
       try {
         const doc = await parseDocx(documentBuffer);
-        const docWithBaseline = withBaselineDocument(doc, baselineSnapshotRef.current);
+        // A newly parsed input source must start from its own immutable baseline.
+        // Reusing the previous document baseline leaks tracked changes across uploads.
+        const docWithBaseline = withBaselineDocument(doc);
         baselineSnapshotRef.current = docWithBaseline.baselineDocument;
         // Reset history with parsed document (clears undo/redo stacks)
         history.reset(docWithBaseline);
