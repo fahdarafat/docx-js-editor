@@ -3,11 +3,16 @@ import type {
   Document,
   Paragraph,
   ParagraphContent,
+  TableCell,
+  TableRow,
+  Table,
   Run,
 } from '../../types/document';
 import { revisionizeParagraphRuns, type ParagraphRevisionizeOptions } from './revisionizeParagraph';
 import { detectDocumentMoves, type MoveDetectionOptions } from './moveDetection';
 import { createRevisionIdAllocator } from './revisionIds';
+
+const REALIGN_LOOKAHEAD = 64;
 
 export interface RevisionizeDocumentOptions extends ParagraphRevisionizeOptions {
   /**
@@ -46,46 +51,88 @@ export function revisionizeDocument(
   const previousBlocks = previous.package.document.content;
   const currentBlocks = current.package.document.content;
   const nextBlocks: BlockContent[] = [];
-  const blockCount = Math.max(previousBlocks.length, currentBlocks.length);
 
-  for (let i = 0; i < blockCount; i += 1) {
-    const prevBlock = previousBlocks[i];
-    const currBlock = currentBlocks[i];
+  let prevIndex = 0;
+  let currIndex = 0;
+
+  while (prevIndex < previousBlocks.length || currIndex < currentBlocks.length) {
+    const prevBlock = previousBlocks[prevIndex];
+    const currBlock = currentBlocks[currIndex];
+
+    if (!prevBlock && currBlock) {
+      appendInsertedBlock(nextBlocks, currBlock, paragraphOptions);
+      currIndex += 1;
+      continue;
+    }
+
+    if (prevBlock && !currBlock) {
+      appendDeletedBlock(nextBlocks, prevBlock, paragraphOptions);
+      prevIndex += 1;
+      continue;
+    }
+
+    if (!prevBlock || !currBlock) {
+      break;
+    }
+
+    if (blocksAreEquivalent(prevBlock, currBlock)) {
+      appendPairedBlocks(
+        nextBlocks,
+        prevBlock,
+        currBlock,
+        prevIndex,
+        currIndex,
+        movedParagraphBlocks,
+        paragraphOptions
+      );
+      prevIndex += 1;
+      currIndex += 1;
+      continue;
+    }
+
+    const nextCurrMatch = findMatchingBlockIndex(
+      currentBlocks,
+      currIndex + 1,
+      prevBlock,
+      REALIGN_LOOKAHEAD
+    );
+    const nextPrevMatch = findMatchingBlockIndex(
+      previousBlocks,
+      prevIndex + 1,
+      currBlock,
+      REALIGN_LOOKAHEAD
+    );
 
     if (
-      movedParagraphBlocks?.has(i) &&
-      prevBlock?.type === 'paragraph' &&
-      currBlock?.type === 'paragraph'
+      nextCurrMatch !== -1 &&
+      (nextPrevMatch === -1 || nextCurrMatch - currIndex <= nextPrevMatch - prevIndex)
     ) {
-      // Phase-1 integration: run the detection phase now, and keep stable diff output
-      // until move wrappers are emitted in the serialization/parsing phase.
-      nextBlocks.push(revisionizeParagraphBlock(prevBlock, currBlock, paragraphOptions));
+      while (currIndex < nextCurrMatch) {
+        appendInsertedBlock(nextBlocks, currentBlocks[currIndex], paragraphOptions);
+        currIndex += 1;
+      }
       continue;
     }
 
-    if (prevBlock?.type === 'paragraph' && currBlock?.type === 'paragraph') {
-      nextBlocks.push(revisionizeParagraphBlock(prevBlock, currBlock, paragraphOptions));
+    if (nextPrevMatch !== -1) {
+      while (prevIndex < nextPrevMatch) {
+        appendDeletedBlock(nextBlocks, previousBlocks[prevIndex], paragraphOptions);
+        prevIndex += 1;
+      }
       continue;
     }
 
-    if (!prevBlock && currBlock?.type === 'paragraph') {
-      nextBlocks.push(
-        revisionizeParagraphBlock(createEmptyParagraph(), currBlock, paragraphOptions)
-      );
-      continue;
-    }
-
-    if (prevBlock?.type === 'paragraph' && !currBlock) {
-      nextBlocks.push(
-        revisionizeParagraphBlock(prevBlock, createEmptyParagraph(), paragraphOptions)
-      );
-      continue;
-    }
-
-    // Non-paragraph fallback: keep current block when present.
-    if (currBlock) {
-      nextBlocks.push(currBlock);
-    }
+    appendPairedBlocks(
+      nextBlocks,
+      prevBlock,
+      currBlock,
+      prevIndex,
+      currIndex,
+      movedParagraphBlocks,
+      paragraphOptions
+    );
+    prevIndex += 1;
+    currIndex += 1;
   }
 
   return {
@@ -100,6 +147,114 @@ export function revisionizeDocument(
   };
 }
 
+function appendPairedBlocks(
+  result: BlockContent[],
+  previous: BlockContent,
+  current: BlockContent,
+  previousIndex: number,
+  currentIndex: number,
+  movedParagraphBlocks: Set<number> | null,
+  options: RevisionizeDocumentOptions
+): void {
+  if (previous.type === 'paragraph' && current.type === 'paragraph') {
+    if (movedParagraphBlocks?.has(previousIndex) || movedParagraphBlocks?.has(currentIndex)) {
+      // Keep move-detected paragraphs revisionized through the same allocator path.
+      result.push(revisionizeParagraphBlock(previous, current, options));
+      return;
+    }
+
+    result.push(revisionizeParagraphBlock(previous, current, options));
+    return;
+  }
+
+  if (previous.type === 'table' && current.type === 'table') {
+    result.push(revisionizeTableBlock(previous, current, options));
+    return;
+  }
+
+  // Non-paragraph fallback: keep current block when present.
+  result.push(current);
+}
+
+function appendInsertedBlock(
+  result: BlockContent[],
+  block: BlockContent | undefined,
+  options: RevisionizeDocumentOptions
+): void {
+  if (!block) return;
+  if (block.type === 'paragraph') {
+    result.push(revisionizeParagraphBlock(createEmptyParagraph(), block, options));
+    return;
+  }
+  result.push(block);
+}
+
+function appendDeletedBlock(
+  result: BlockContent[],
+  block: BlockContent | undefined,
+  options: RevisionizeDocumentOptions
+): void {
+  if (!block) return;
+  if (block.type === 'paragraph') {
+    result.push(revisionizeParagraphBlock(block, createEmptyParagraph(), options));
+  }
+}
+
+function findMatchingBlockIndex(
+  blocks: BlockContent[],
+  startIndex: number,
+  target: BlockContent,
+  lookahead: number
+): number {
+  const maxIndex = Math.min(blocks.length, startIndex + lookahead);
+  for (let i = startIndex; i < maxIndex; i += 1) {
+    if (blocksAreEquivalent(blocks[i], target)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function blocksAreEquivalent(previous: BlockContent, current: BlockContent): boolean {
+  if (previous.type !== current.type) {
+    return false;
+  }
+
+  if (previous.type === 'paragraph' && current.type === 'paragraph') {
+    return getParagraphAnchor(previous) === getParagraphAnchor(current);
+  }
+
+  if (previous.type === 'table' && current.type === 'table') {
+    return getTableAnchor(previous) === getTableAnchor(current);
+  }
+
+  return false;
+}
+
+function getParagraphAnchor(paragraph: Paragraph): string {
+  return `${paragraph.formatting?.styleId ?? ''}|${extractRuns(paragraph.content)
+    .flatMap((run) =>
+      run.content
+        .filter((content): content is { type: 'text'; text: string } => content.type === 'text')
+        .map((content) => content.text)
+    )
+    .join('')}`;
+}
+
+function getTableAnchor(table: Table): string {
+  const rows = table.rows.map((row) =>
+    row.cells
+      .map((cell) =>
+        cell.content
+          .filter((content): content is Paragraph => content.type === 'paragraph')
+          .map((paragraph) => getParagraphAnchor(paragraph))
+          .join('||')
+      )
+      .join('|')
+  );
+  return `${table.formatting?.styleId ?? ''}|${rows.join('::')}`;
+}
+
 function revisionizeParagraphBlock(
   previous: Paragraph,
   current: Paragraph,
@@ -112,6 +267,95 @@ function revisionizeParagraphBlock(
   return {
     ...current,
     content,
+  };
+}
+
+function revisionizeTableBlock(
+  previous: Table,
+  current: Table,
+  options: RevisionizeDocumentOptions
+): Table {
+  const rowCount = Math.max(previous.rows.length, current.rows.length);
+  const rows: TableRow[] = [];
+
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    const previousRow = previous.rows[rowIndex];
+    const currentRow = current.rows[rowIndex];
+
+    if (!currentRow) {
+      continue;
+    }
+
+    if (!previousRow) {
+      rows.push(currentRow);
+      continue;
+    }
+
+    rows.push({
+      ...currentRow,
+      cells: revisionizeTableCells(previousRow.cells, currentRow.cells, options),
+    });
+  }
+
+  return {
+    ...current,
+    rows,
+  };
+}
+
+function revisionizeTableCells(
+  previousCells: TableCell[],
+  currentCells: TableCell[],
+  options: RevisionizeDocumentOptions
+): TableCell[] {
+  const cellCount = Math.max(previousCells.length, currentCells.length);
+  const cells: TableCell[] = [];
+
+  for (let cellIndex = 0; cellIndex < cellCount; cellIndex += 1) {
+    const previousCell = previousCells[cellIndex];
+    const currentCell = currentCells[cellIndex];
+
+    if (!currentCell) {
+      continue;
+    }
+
+    if (!previousCell) {
+      cells.push(currentCell);
+      continue;
+    }
+
+    cells.push({
+      ...currentCell,
+      content: revisionizeTableCellContent(previousCell.content, currentCell.content, options),
+    });
+  }
+
+  return cells;
+}
+
+function revisionizeTableCellContent(
+  previous: (Paragraph | Table)[],
+  current: (Paragraph | Table)[],
+  options: RevisionizeDocumentOptions
+): (Paragraph | Table)[] {
+  const revisedBlocks = revisionizeDocument(
+    createDocumentFromBlocks(previous),
+    createDocumentFromBlocks(current),
+    options
+  ).package.document.content;
+
+  return revisedBlocks.filter(
+    (block): block is Paragraph | Table => block.type === 'paragraph' || block.type === 'table'
+  );
+}
+
+function createDocumentFromBlocks(blocks: BlockContent[]): Document {
+  return {
+    package: {
+      document: {
+        content: blocks,
+      },
+    },
   };
 }
 
