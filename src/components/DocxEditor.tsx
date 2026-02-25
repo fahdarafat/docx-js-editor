@@ -4,7 +4,6 @@
  * Main component integrating all editor features:
  * - Toolbar for formatting
  * - ProseMirror-based editor for content editing
- * - VariablePanel for template variables
  * - Zoom control
  * - Error boundary
  * - Loading states
@@ -26,7 +25,6 @@ import type { Document, DocumentSnapshot, Theme, HeaderFooter } from '../types/d
 
 import { Toolbar, type SelectionFormatting, type FormattingAction } from './Toolbar';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
-import { VariablePanel } from './VariablePanel';
 import { DocumentOutline } from './DocumentOutline';
 import type { HeadingInfo } from '../utils/headingCollector';
 import { ErrorBoundary, ErrorProvider } from './ErrorBoundary';
@@ -81,18 +79,8 @@ const FootnotePropertiesDialog = lazy(() =>
 );
 import { MaterialSymbol } from './ui/Icons';
 import { getBuiltinTableStyle, type TableStylePreset } from './ui/TableStyleGallery';
-import {
-  DocumentAgent,
-  type SaveDocxOptions,
-  type TrackChangesExportOptions,
-} from '../agent/DocumentAgent';
-import {
-  DefaultLoadingIndicator,
-  DefaultPlaceholder,
-  ParseError,
-  extractVariableNames,
-  extractVariables,
-} from './DocxEditorHelpers';
+import { DocumentAgent } from '../agent/DocumentAgent';
+import { DefaultLoadingIndicator, DefaultPlaceholder, ParseError } from './DocxEditorHelpers';
 import { parseDocx } from '../docx/parser';
 import { type DocxInput } from '../utils/docxInput';
 import { onFontsLoaded, loadDocumentFonts } from '../utils/fontLoader';
@@ -222,8 +210,6 @@ export interface DocxEditorProps {
   theme?: Theme | null;
   /** Whether to show toolbar (default: true) */
   showToolbar?: boolean;
-  /** Whether to show variable panel (default: true) */
-  showVariablePanel?: boolean;
   /** Whether to show zoom control (default: true) */
   showZoomControl?: boolean;
   /** Whether to show page number indicator (default: true) */
@@ -244,14 +230,10 @@ export interface DocxEditorProps {
   rulerUnit?: 'inch' | 'cm';
   /** Initial zoom level (default: 1.0) */
   initialZoom?: number;
-  /** Whether the editor is read-only. When true, hides toolbar, rulers, and variable panel */
+  /** Whether the editor is read-only. When true, hides toolbar and rulers */
   readOnly?: boolean;
   /** Custom toolbar actions */
   toolbarExtra?: ReactNode;
-  /** Variable panel position (default: 'right') */
-  variablePanelPosition?: 'left' | 'right';
-  /** Variable descriptions */
-  variableDescriptions?: Record<string, string>;
   /** Additional CSS class name */
   className?: string;
   /** Additional inline styles */
@@ -323,8 +305,6 @@ interface EditorState {
   isLoading: boolean;
   parseError: string | null;
   zoom: number;
-  variableValues: Record<string, string>;
-  isApplyingVariables: boolean;
   /** Current selection formatting for toolbar */
   selectionFormatting: SelectionFormatting;
   /** Current page number (1-indexed) */
@@ -398,7 +378,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onFontsLoaded: onFontsLoadedCallback,
     theme,
     showToolbar = true,
-    showVariablePanel = true,
     showZoomControl = true,
     showPageNumbers = true,
     enablePageNavigation = true,
@@ -411,8 +390,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     initialZoom = 1.0,
     readOnly = false,
     toolbarExtra,
-    variablePanelPosition = 'right',
-    variableDescriptions,
     className = '',
     style,
     placeholder,
@@ -436,8 +413,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     isLoading: !!documentBuffer,
     parseError: null,
     zoom: initialZoom,
-    variableValues: {},
-    isApplyingVariables: false,
     selectionFormatting: {},
     currentPage: 1,
     totalPages: 1,
@@ -614,12 +589,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           isLoading: false,
           parseError: null,
         }));
-
-        // Extract initial variable values
-        if (docWithBaseline.package.document) {
-          const variables = extractVariables(docWithBaseline);
-          setState((prev) => ({ ...prev, variableValues: variables }));
-        }
 
         // Load fonts used in the document from Google Fonts
         loadDocumentFonts(docWithBaseline).catch((err) => {
@@ -1528,30 +1497,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [getActiveEditorView]
   );
 
-  // Handle variable values change
-  const handleVariableValuesChange = useCallback((values: Record<string, string>) => {
-    setState((prev) => ({ ...prev, variableValues: values }));
-  }, []);
-
-  // Handle apply variables
-  const handleApplyVariables = useCallback(
-    async (values: Record<string, string>) => {
-      if (!agentRef.current) return;
-
-      setState((prev) => ({ ...prev, isApplyingVariables: true }));
-
-      try {
-        const newDoc = agentRef.current.setVariables(values).getDocument();
-        handleDocumentChange(newDoc);
-      } catch (error) {
-        onError?.(error instanceof Error ? error : new Error('Failed to apply variables'));
-      } finally {
-        setState((prev) => ({ ...prev, isApplyingVariables: false }));
-      }
-    },
-    [handleDocumentChange, onError]
-  );
-
   // Handle zoom change
   const handleZoomChange = useCallback((zoom: number) => {
     setState((prev) => ({ ...prev, zoom }));
@@ -1957,12 +1902,6 @@ body { background: white; }
     [history.state, state.zoom, state.currentPage, state.totalPages, handleSave, handleDirectPrint]
   );
 
-  // Get detected variables from document
-  const detectedVariables = useMemo(() => {
-    if (!history.state) return [];
-    return extractVariableNames(history.state);
-  }, [history.state]);
-
   // Get header and footer content from document
   const { headerContent, footerContent } = useMemo<{
     headerContent: HeaderFooter | null;
@@ -2174,7 +2113,7 @@ body { background: white; }
     flex: 1,
     minHeight: 0, // Allow flex item to shrink below content size
     minWidth: 0, // Allow flex item to shrink below content width on narrow viewports
-    flexDirection: variablePanelPosition === 'left' ? 'row-reverse' : 'row',
+    flexDirection: 'row',
   };
 
   const editorContainerStyle: CSSProperties = {
@@ -2183,14 +2122,6 @@ body { background: white; }
     minWidth: 0, // Allow flex item to shrink below content width on narrow viewports
     overflow: 'auto', // This is the scroll container - sticky toolbar will stick to this
     position: 'relative',
-  };
-
-  const variablePanelStyle: CSSProperties = {
-    width: '300px',
-    borderLeft: variablePanelPosition === 'right' ? '1px solid var(--doc-border)' : undefined,
-    borderRight: variablePanelPosition === 'left' ? '1px solid var(--doc-border)' : undefined,
-    overflow: 'auto',
-    backgroundColor: 'white',
   };
 
   // Render loading state
@@ -2484,21 +2415,6 @@ body { background: white; }
               )}
             </div>
             {/* end wrapper for scroll container + outline */}
-
-            {/* Variable panel (hidden in read-only mode) */}
-            {showVariablePanel && !readOnly && detectedVariables.length > 0 && (
-              <div style={variablePanelStyle}>
-                <VariablePanel
-                  variables={detectedVariables}
-                  values={state.variableValues}
-                  onValuesChange={handleVariableValuesChange}
-                  onApply={handleApplyVariables}
-                  isApplying={state.isApplyingVariables}
-                  descriptions={variableDescriptions}
-                  disabled={readOnly}
-                />
-              </div>
-            )}
           </div>
 
           {/* Lazy-loaded dialogs — only fetched when first opened */}

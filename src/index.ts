@@ -106,7 +106,6 @@ export {
   ToolbarGroup,
   ToolbarSeparator,
 } from './components/Toolbar';
-export { VariablePanel, type VariablePanelProps } from './components/VariablePanel';
 export {
   ContextMenu,
   type ContextMenuProps,
