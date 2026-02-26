@@ -104,6 +104,16 @@ function collectParagraphContentMaxRevisionId(contents: ParagraphContent[]): num
       continue;
     }
 
+    if (
+      content.type === 'moveFromRangeStart' ||
+      content.type === 'moveFromRangeEnd' ||
+      content.type === 'moveToRangeStart' ||
+      content.type === 'moveToRangeEnd'
+    ) {
+      maxId = Math.max(maxId, content.id);
+      continue;
+    }
+
     if (content.type === 'run') {
       maxId = Math.max(maxId, collectRevisionIdFromChangeInfo(content.propertyChanges));
       continue;

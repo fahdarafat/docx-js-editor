@@ -1092,8 +1092,30 @@ function parseParagraphContents(
       }
 
       case 'smartTag':
-        // Other track changes - skip for now
         break;
+
+      case 'moveFromRangeStart': {
+        const id = parseInt(getAttribute(child, 'w', 'id') ?? '0', 10);
+        const name = getAttribute(child, 'w', 'name') ?? '';
+        contents.push({ type: 'moveFromRangeStart', id, name });
+        break;
+      }
+      case 'moveFromRangeEnd': {
+        const id = parseInt(getAttribute(child, 'w', 'id') ?? '0', 10);
+        contents.push({ type: 'moveFromRangeEnd', id });
+        break;
+      }
+      case 'moveToRangeStart': {
+        const id = parseInt(getAttribute(child, 'w', 'id') ?? '0', 10);
+        const name = getAttribute(child, 'w', 'name') ?? '';
+        contents.push({ type: 'moveToRangeStart', id, name });
+        break;
+      }
+      case 'moveToRangeEnd': {
+        const id = parseInt(getAttribute(child, 'w', 'id') ?? '0', 10);
+        contents.push({ type: 'moveToRangeEnd', id });
+        break;
+      }
 
       case 'commentRangeStart': {
         const commentId = parseInt(getAttribute(child, 'w', 'id') ?? '0', 10);

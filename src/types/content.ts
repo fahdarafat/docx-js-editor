@@ -929,6 +929,42 @@ export interface MoveTo {
 }
 
 /**
+ * Move-from range start marker (w:moveFromRangeStart) — ECMA-376 §17.13.5.22
+ * Pairs with moveFromRangeEnd to delimit the source of a move in the document.
+ */
+export interface MoveFromRangeStart {
+  type: 'moveFromRangeStart';
+  id: number;
+  name: string;
+}
+
+/**
+ * Move-from range end marker (w:moveFromRangeEnd)
+ */
+export interface MoveFromRangeEnd {
+  type: 'moveFromRangeEnd';
+  id: number;
+}
+
+/**
+ * Move-to range start marker (w:moveToRangeStart) — ECMA-376 §17.13.5.24
+ * Pairs with moveToRangeEnd to delimit the destination of a move.
+ */
+export interface MoveToRangeStart {
+  type: 'moveToRangeStart';
+  id: number;
+  name: string;
+}
+
+/**
+ * Move-to range end marker (w:moveToRangeEnd)
+ */
+export interface MoveToRangeEnd {
+  type: 'moveToRangeEnd';
+  id: number;
+}
+
+/**
  * Run-level tracked wrappers represented in WordprocessingML.
  */
 export type TrackedRunChange = Insertion | Deletion | MoveFrom | MoveTo;
@@ -1098,6 +1134,10 @@ export type ParagraphContent =
   | Deletion
   | MoveFrom
   | MoveTo
+  | MoveFromRangeStart
+  | MoveFromRangeEnd
+  | MoveToRangeStart
+  | MoveToRangeEnd
   | MathEquation;
 
 /**

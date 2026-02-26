@@ -25,6 +25,8 @@ import type {
   Deletion,
   MoveFrom,
   MoveTo,
+  MoveFromRangeStart,
+  MoveToRangeStart,
   ParagraphPropertyChange,
   TabStop,
   BorderSpec,
@@ -761,6 +763,14 @@ function serializeInlineSdt(sdt: InlineSdt): string {
   return `<w:sdt><w:sdtPr>${prParts.join('')}</w:sdtPr><w:sdtContent>${contentXml}</w:sdtContent></w:sdt>`;
 }
 
+function serializeMoveRangeStart(
+  tag: 'moveFromRangeStart' | 'moveToRangeStart',
+  marker: MoveFromRangeStart | MoveToRangeStart
+): string {
+  const attrs = [`w:id="${marker.id}"`, `w:name="${escapeXml(marker.name)}"`];
+  return `<w:${tag} ${attrs.join(' ')}/>`;
+}
+
 /**
  * Serialize a tracked change wrapper (ins/del/moveFrom/moveTo)
  */
@@ -827,6 +837,14 @@ function serializeParagraphContent(content: ParagraphContent): string {
       return serializeTrackedChange('moveFrom', content);
     case 'moveTo':
       return serializeTrackedChange('moveTo', content);
+    case 'moveFromRangeStart':
+      return serializeMoveRangeStart('moveFromRangeStart', content as MoveFromRangeStart);
+    case 'moveFromRangeEnd':
+      return `<w:moveFromRangeEnd w:id="${content.id}"/>`;
+    case 'moveToRangeStart':
+      return serializeMoveRangeStart('moveToRangeStart', content as MoveToRangeStart);
+    case 'moveToRangeEnd':
+      return `<w:moveToRangeEnd w:id="${content.id}"/>`;
     case 'mathEquation':
       // Round-trip the raw OMML XML directly
       return content.ommlXml || '';
