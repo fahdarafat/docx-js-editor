@@ -12,6 +12,7 @@ import {
   resolveRevisionMetadata,
 } from './metadata';
 import { createRevisionIdAllocator, type RevisionIdAllocator } from './revisionIds';
+import { deepEqual } from './utils';
 
 export interface PropertyChangeRevisionOptions {
   allocator?: RevisionIdAllocator;
@@ -110,5 +111,5 @@ function createPropertyChangeInfo(
 }
 
 function areEqual(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+  return deepEqual(left ?? null, right ?? null);
 }
