@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { Document, Paragraph } from '../../src/types/document';
+import type { Document, Paragraph, Table, BlockContent } from '../../src/types/document';
 
 export async function extractDocumentXml(buffer: ArrayBuffer): Promise<string> {
   const zip = await JSZip.loadAsync(buffer);
@@ -22,6 +22,19 @@ export function createTextParagraph(text: string): Paragraph {
   };
 }
 
+export function createTable(cellTexts: string[][]): Table {
+  return {
+    type: 'table',
+    rows: cellTexts.map((rowTexts) => ({
+      type: 'tableRow' as const,
+      cells: rowTexts.map((text) => ({
+        type: 'tableCell' as const,
+        content: [createTextParagraph(text)],
+      })),
+    })),
+  };
+}
+
 export function createBaselineSnapshot(
   originalBuffer: ArrayBuffer,
   paragraphText: string
@@ -30,6 +43,20 @@ export function createBaselineSnapshot(
     package: {
       document: {
         content: [createTextParagraph(paragraphText)],
+      },
+    },
+    originalBuffer,
+  };
+}
+
+export function createBaselineFromBlocks(
+  originalBuffer: ArrayBuffer,
+  blocks: BlockContent[]
+): Document['baselineDocument'] {
+  return {
+    package: {
+      document: {
+        content: blocks,
       },
     },
     originalBuffer,
