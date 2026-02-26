@@ -22,6 +22,7 @@ import {
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Document, DocumentSnapshot, Theme, HeaderFooter } from '../types/document';
+import { withBaselineDocument, createBaselineSnapshot } from '../docx/revisions/baseline';
 
 import { Toolbar, type SelectionFormatting, type FormattingAction } from './Toolbar';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
@@ -79,7 +80,11 @@ const FootnotePropertiesDialog = lazy(() =>
 );
 import { MaterialSymbol } from './ui/Icons';
 import { getBuiltinTableStyle, type TableStylePreset } from './ui/TableStyleGallery';
-import { DocumentAgent } from '../agent/DocumentAgent';
+import {
+  DocumentAgent,
+  type TrackChangesExportOptions,
+  type SaveDocxOptions,
+} from '../agent/DocumentAgent';
 import { DefaultLoadingIndicator, DefaultPlaceholder, ParseError } from './DocxEditorHelpers';
 import { parseDocx } from '../docx/parser';
 import { type DocxInput } from '../utils/docxInput';
@@ -333,32 +338,6 @@ interface EditorState {
   } | null;
 }
 
-function clonePackageSnapshot(pkg: Document['package']): Document['package'] {
-  if (typeof structuredClone === 'function') {
-    return structuredClone(pkg);
-  }
-  return pkg;
-}
-
-function createBaselineSnapshot(document: Document): DocumentSnapshot {
-  return {
-    package: clonePackageSnapshot(document.package),
-    originalBuffer: document.originalBuffer,
-    templateVariables: document.templateVariables ? [...document.templateVariables] : undefined,
-    warnings: document.warnings ? [...document.warnings] : undefined,
-  };
-}
-
-function withBaselineDocument(document: Document, fallbackBaseline?: DocumentSnapshot): Document {
-  if (document.baselineDocument) {
-    return document;
-  }
-  return {
-    ...document,
-    baselineDocument: fallbackBaseline ?? createBaselineSnapshot(document),
-  };
-}
-
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -486,6 +465,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const baselineSnapshotRef = useRef<DocumentSnapshot | undefined>(
     initialDocument?.baselineDocument
   );
+  // Track originalBuffer identity so we can distinguish a truly-new document (different buffer)
+  // from a controlled echo (same buffer, onChange stripped baseline before parent state update).
+  const prevOriginalBufferRef = useRef<ArrayBuffer | undefined>(undefined);
   // Track current border color/width for border presets (like Google Docs)
   const borderSpecRef = useRef({ style: 'single', size: 4, color: { rgb: '000000' } });
 
@@ -561,12 +543,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   useEffect(() => {
     if (!documentBuffer) {
       if (initialDocument) {
-        const docWithBaseline = withBaselineDocument(initialDocument, baselineSnapshotRef.current);
-        baselineSnapshotRef.current = docWithBaseline.baselineDocument;
-        history.reset(docWithBaseline);
+        const isNewDocument = prevOriginalBufferRef.current !== initialDocument.originalBuffer;
+        prevOriginalBufferRef.current = initialDocument.originalBuffer;
+        const fallback = isNewDocument ? undefined : baselineSnapshotRef.current;
+        const doc = trackChanges?.enabled
+          ? withBaselineDocument(initialDocument, fallback)
+          : initialDocument;
+        baselineSnapshotRef.current = doc.baselineDocument;
+        history.reset(doc);
         setState((prev) => ({ ...prev, isLoading: false }));
         // Load fonts for initial document
-        loadDocumentFonts(docWithBaseline).catch((err) => {
+        loadDocumentFonts(doc).catch((err) => {
           console.warn('Failed to load document fonts:', err);
         });
       }
@@ -578,12 +565,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     const parseDocument = async () => {
       try {
         const doc = await parseDocx(documentBuffer);
-        // A newly parsed input source must start from its own immutable baseline.
-        // Reusing the previous document baseline leaks tracked changes across uploads.
-        const docWithBaseline = withBaselineDocument(doc);
-        baselineSnapshotRef.current = docWithBaseline.baselineDocument;
+        const docForHistory = trackChanges?.enabled ? withBaselineDocument(doc) : doc;
+        baselineSnapshotRef.current = docForHistory.baselineDocument;
         // Reset history with parsed document (clears undo/redo stacks)
-        history.reset(docWithBaseline);
+        history.reset(docForHistory);
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -591,7 +576,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }));
 
         // Load fonts used in the document from Google Fonts
-        loadDocumentFonts(docWithBaseline).catch((err) => {
+        loadDocumentFonts(docForHistory).catch((err) => {
           console.warn('Failed to load document fonts:', err);
         });
       } catch (error) {
@@ -611,11 +596,34 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Update document when initialDocument changes
   useEffect(() => {
     if (initialDocument && !documentBuffer) {
-      const docWithBaseline = withBaselineDocument(initialDocument, baselineSnapshotRef.current);
-      baselineSnapshotRef.current = docWithBaseline.baselineDocument;
-      history.reset(docWithBaseline);
+      const isNewDocument = prevOriginalBufferRef.current !== initialDocument.originalBuffer;
+      prevOriginalBufferRef.current = initialDocument.originalBuffer;
+      const fallback = isNewDocument ? undefined : baselineSnapshotRef.current;
+      const doc = trackChanges?.enabled
+        ? withBaselineDocument(initialDocument, fallback)
+        : initialDocument;
+      baselineSnapshotRef.current = doc.baselineDocument;
+      history.reset(doc);
     }
   }, [initialDocument, documentBuffer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // React to track-changes enablement transitions:
+  // - enabled → create baseline from current state so the first edit is tracked
+  // - disabled → clear baseline ref and strip baseline from current state
+  useEffect(() => {
+    if (trackChanges?.enabled) {
+      if (!baselineSnapshotRef.current && history.state) {
+        baselineSnapshotRef.current = createBaselineSnapshot(history.state);
+      }
+    } else {
+      baselineSnapshotRef.current = undefined;
+      history.transformAll((doc) => {
+        if (!doc?.baselineDocument) return doc;
+        const { baselineDocument: _, ...stripped } = doc;
+        return stripped as Document;
+      });
+    }
+  }, [trackChanges?.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Create/update agent when document changes
   useEffect(() => {
@@ -636,19 +644,24 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   const pushDocumentWithBaseline = useCallback(
     (document: Document) => {
-      const documentWithBaseline = withBaselineDocument(document, baselineSnapshotRef.current);
-      baselineSnapshotRef.current = documentWithBaseline.baselineDocument;
-      history.push(documentWithBaseline);
-      return documentWithBaseline;
+      const doc = trackChanges?.enabled
+        ? withBaselineDocument(document, baselineSnapshotRef.current)
+        : document;
+      baselineSnapshotRef.current = doc.baselineDocument;
+      history.push(doc);
+      return doc;
     },
-    [history]
+    [history, trackChanges?.enabled]
   );
 
   // Handle document change
   const handleDocumentChange = useCallback(
     (newDocument: Document) => {
       const documentWithBaseline = pushDocumentWithBaseline(newDocument);
-      onChange?.(documentWithBaseline);
+      if (onChange) {
+        const { baselineDocument: _baseline, ...publicDocument } = documentWithBaseline;
+        onChange(publicDocument as Document);
+      }
       // Update outline headings if sidebar is open
       if (showOutlineRef.current) {
         const view = pagedEditorRef.current?.getView();
