@@ -77,6 +77,99 @@ describe('move serialization and parsing', () => {
     expect(moveTo.content[0].content[0].text).toBe('Moved here');
   });
 
+  test('serializeParagraph emits moveFromRangeStart/End and moveToRangeStart/End markers', () => {
+    const paragraph: Paragraph = {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'moveFromRangeStart',
+          id: 42,
+          name: 'move42',
+        },
+        {
+          type: 'moveFrom',
+          info: { id: 43, author: 'Reviewer' },
+          content: [textRun('Moved away')],
+        },
+        {
+          type: 'moveFromRangeEnd',
+          id: 42,
+        },
+      ],
+    };
+
+    const xml = serializeParagraph(paragraph);
+
+    expect(xml).toContain('<w:moveFromRangeStart w:id="42" w:name="move42"/>');
+    expect(xml).toContain('<w:moveFromRangeEnd w:id="42"/>');
+    expect(xml).toContain('<w:moveFrom w:id="43" w:author="Reviewer">');
+    expect(xml).toContain('<w:delText>Moved away</w:delText>');
+  });
+
+  test('parseParagraph reads moveFromRangeStart/End markers', () => {
+    const paragraphXml = `
+      <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:moveFromRangeStart w:id="50" w:name="move50"/>
+        <w:moveFrom w:id="51" w:author="Reviewer">
+          <w:r><w:delText>Source text</w:delText></w:r>
+        </w:moveFrom>
+        <w:moveFromRangeEnd w:id="50"/>
+      </w:p>
+    `;
+    const root = parseXmlDocument(paragraphXml) as XmlElement | null;
+    expect(root).not.toBeNull();
+    if (!root) return;
+
+    const paragraph = parseParagraph(root, null, null, null, null, null);
+
+    const rangeStart = paragraph.content.find((c) => c.type === 'moveFromRangeStart');
+    const rangeEnd = paragraph.content.find((c) => c.type === 'moveFromRangeEnd');
+    const moveFrom = paragraph.content.find((c) => c.type === 'moveFrom');
+
+    expect(rangeStart).toBeDefined();
+    expect(rangeEnd).toBeDefined();
+    expect(moveFrom).toBeDefined();
+
+    if (rangeStart?.type !== 'moveFromRangeStart') return;
+    expect(rangeStart.id).toBe(50);
+    expect(rangeStart.name).toBe('move50');
+
+    if (rangeEnd?.type !== 'moveFromRangeEnd') return;
+    expect(rangeEnd.id).toBe(50);
+  });
+
+  test('parseParagraph reads moveToRangeStart/End markers', () => {
+    const paragraphXml = `
+      <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:moveToRangeStart w:id="60" w:name="move60"/>
+        <w:moveTo w:id="61" w:author="Reviewer">
+          <w:r><w:t>Destination text</w:t></w:r>
+        </w:moveTo>
+        <w:moveToRangeEnd w:id="60"/>
+      </w:p>
+    `;
+    const root = parseXmlDocument(paragraphXml) as XmlElement | null;
+    expect(root).not.toBeNull();
+    if (!root) return;
+
+    const paragraph = parseParagraph(root, null, null, null, null, null);
+
+    const rangeStart = paragraph.content.find((c) => c.type === 'moveToRangeStart');
+    const rangeEnd = paragraph.content.find((c) => c.type === 'moveToRangeEnd');
+    const moveTo = paragraph.content.find((c) => c.type === 'moveTo');
+
+    expect(rangeStart).toBeDefined();
+    expect(rangeEnd).toBeDefined();
+    expect(moveTo).toBeDefined();
+
+    if (rangeStart?.type !== 'moveToRangeStart') return;
+    expect(rangeStart.id).toBe(60);
+    expect(rangeStart.name).toBe('move60');
+
+    if (rangeEnd?.type !== 'moveToRangeEnd') return;
+    expect(rangeEnd.id).toBe(60);
+  });
+
   test('ProseMirror conversion preserves move wrappers when paired revision ids are present', () => {
     const document: Document = {
       package: {

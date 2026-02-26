@@ -151,6 +151,95 @@ describe('revisionizeDocument', () => {
     expect(hasTrackedContent(fourthParagraph)).toBe(false);
   });
 
+  test('detects moved paragraphs and emits moveFrom/moveTo with range markers', () => {
+    const previous = documentFromParagraphs(
+      paragraph('First'),
+      paragraph('Second'),
+      paragraph('Third')
+    );
+    const current = documentFromParagraphs(
+      paragraph('Second'),
+      paragraph('Third'),
+      paragraph('First')
+    );
+    const allocator = createRevisionIdAllocator(100);
+
+    const result = revisionizeDocument(previous, current, {
+      allocator,
+      insertionMetadata: { author: 'Mover' },
+      deletionMetadata: { author: 'Mover' },
+    });
+
+    const blocks = result.package.document.content;
+
+    const hasMoveFrom = blocks.some(
+      (block) =>
+        block.type === 'paragraph' && block.content.some((item) => item.type === 'moveFrom')
+    );
+    const hasMoveTo = blocks.some(
+      (block) => block.type === 'paragraph' && block.content.some((item) => item.type === 'moveTo')
+    );
+    const hasMoveFromRange = blocks.some(
+      (block) =>
+        block.type === 'paragraph' &&
+        block.content.some((item) => item.type === 'moveFromRangeStart')
+    );
+    const hasMoveToRange = blocks.some(
+      (block) =>
+        block.type === 'paragraph' && block.content.some((item) => item.type === 'moveToRangeStart')
+    );
+
+    expect(hasMoveFrom).toBe(true);
+    expect(hasMoveTo).toBe(true);
+    expect(hasMoveFromRange).toBe(true);
+    expect(hasMoveToRange).toBe(true);
+  });
+
+  test('move range IDs match between moveFrom and moveTo paragraphs', () => {
+    const previous = documentFromParagraphs(paragraph('Alpha'), paragraph('Beta'));
+    const current = documentFromParagraphs(paragraph('Beta'), paragraph('Alpha'));
+    const allocator = createRevisionIdAllocator(200);
+
+    const result = revisionizeDocument(previous, current, { allocator });
+    const blocks = result.package.document.content;
+
+    const moveFromRangeIds = new Set<number>();
+    const moveToRangeIds = new Set<number>();
+
+    for (const block of blocks) {
+      if (block.type !== 'paragraph') continue;
+      for (const item of block.content) {
+        if (item.type === 'moveFromRangeStart') moveFromRangeIds.add(item.id);
+        if (item.type === 'moveToRangeStart') moveToRangeIds.add(item.id);
+      }
+    }
+
+    expect(moveFromRangeIds.size).toBeGreaterThan(0);
+    for (const id of moveFromRangeIds) {
+      expect(moveToRangeIds.has(id)).toBe(true);
+    }
+  });
+
+  test('non-moved deletions and insertions remain as del/ins not move', () => {
+    const previous = documentFromParagraphs(paragraph('Keep'), paragraph('Old unique'));
+    const current = documentFromParagraphs(paragraph('Keep'), paragraph('New unique'));
+    const allocator = createRevisionIdAllocator(300);
+
+    const result = revisionizeDocument(previous, current, { allocator });
+    const blocks = result.package.document.content;
+
+    const hasMoveFrom = blocks.some(
+      (block) =>
+        block.type === 'paragraph' && block.content.some((item) => item.type === 'moveFrom')
+    );
+    const hasMoveTo = blocks.some(
+      (block) => block.type === 'paragraph' && block.content.some((item) => item.type === 'moveTo')
+    );
+
+    expect(hasMoveFrom).toBe(false);
+    expect(hasMoveTo).toBe(false);
+  });
+
   test('adds insertion wrappers for inserted text inside table cells', () => {
     const previous: Document = {
       package: {
