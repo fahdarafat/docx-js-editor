@@ -2386,6 +2386,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         hfEditMode,
         onBodyClick,
         zoom,
+        onHyperlinkClick,
         clearTableInsertTimer,
       ]
     );
@@ -2905,6 +2906,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               onHyperlinkClick({ href, displayText, tooltip, anchorRect });
             }
           }
+          // External links: already handled by mousedown, just prevent default
           return;
         }
 
