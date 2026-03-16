@@ -381,6 +381,7 @@ export type SectionBreakBlock = {
   pageSize?: { w: number; h: number };
   orientation?: 'portrait' | 'landscape';
   margins?: PageMargins;
+  columns?: ColumnLayout;
 };
 
 /**
@@ -705,6 +706,8 @@ export type Page = {
   footnoteIds?: number[];
   /** Height reserved for the footnote area at page bottom (pixels). */
   footnoteReservedHeight?: number;
+  /** Column layout for this page (if multi-column). */
+  columns?: ColumnLayout;
 };
 
 /**
@@ -714,6 +717,8 @@ export type ColumnLayout = {
   count: number;
   gap: number;
   equalWidth?: boolean;
+  /** Draw vertical separator line between columns (w:sep). */
+  separator?: boolean;
 };
 
 /**
@@ -793,6 +798,8 @@ export type LayoutOptions = {
   evenAndOddHeaders?: boolean;
   /** Per-page footnote reserved heights (pageNumber → height in pixels). */
   footnoteReservedHeights?: Map<number, number>;
+  /** Section break type for the body-level (final) section (for section transition logic). */
+  bodyBreakType?: 'continuous' | 'nextPage' | 'evenPage' | 'oddPage';
 };
 
 // =============================================================================

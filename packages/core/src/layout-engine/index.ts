@@ -10,6 +10,7 @@ import type {
   Layout,
   LayoutOptions,
   PageMargins,
+  ColumnLayout,
   ParagraphBlock,
   ParagraphMeasure,
   ParagraphFragment,
@@ -22,6 +23,7 @@ import type {
   TextBoxBlock,
   TextBoxMeasure,
   TextBoxFragment,
+  SectionBreakBlock,
 } from './types';
 
 import { createPaginator } from './paginator';
@@ -143,11 +145,35 @@ export function layoutDocument(
     throw new Error('layoutDocument: page size and margins yield no content area');
   }
 
-  // Create paginator with effective margins
+  // Pre-scan blocks to build per-section configs.
+  // Each section break carries the CURRENT section's properties (columns, type).
+  // ECMA-376 §17.6.22: w:type specifies how the CURRENT section starts relative
+  // to the previous one. So for the transition at break[N], we need:
+  //   - columns: from break[N+1] (what the next section uses)
+  //   - type: from break[N+1] (how the next section starts)
+  const defaultColumns: ColumnLayout = { count: 1, gap: 0 };
+  const sectionColumnConfigs: ColumnLayout[] = [];
+  const sectionBreakTypes: (SectionBreakBlock['type'] | undefined)[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    if (blocks[i].kind === 'sectionBreak') {
+      const sb = blocks[i] as SectionBreakBlock;
+      sectionColumnConfigs.push(sb.columns ?? defaultColumns);
+      sectionBreakTypes.push(sb.type);
+    }
+  }
+  // Final section uses body-level columns; its type comes from options
+  sectionColumnConfigs.push(options.columns ?? defaultColumns);
+  sectionBreakTypes.push(options.bodyBreakType);
+
+  // First section's columns
+  const initialColumns =
+    sectionColumnConfigs.length > 0 ? sectionColumnConfigs[0] : options.columns;
+
+  // Create paginator with first section's columns
   const paginator = createPaginator({
     pageSize,
     margins,
-    columns: options.columns,
+    columns: initialColumns,
     footnoteReservedHeights: options.footnoteReservedHeights,
   });
 
@@ -160,7 +186,8 @@ export function layoutDocument(
   const keepNextChains = computeKeepNextChains(blocks);
   const midChainIndices = getMidChainIndices(keepNextChains);
 
-  // Process each block
+  // Process each block, tracking section break index with a counter (O(1) per break)
+  let sectionIdx = 0;
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
     const measure = measures[i];
@@ -220,10 +247,19 @@ export function layoutDocument(
         paginator.forceColumnBreak();
         break;
 
-      case 'sectionBreak':
-        // Handle section break - may force page break depending on type
-        handleSectionBreak(block, paginator);
+      case 'sectionBreak': {
+        // Use the NEXT section's columns; for break type, prefer next section's
+        // type but fall back to current break's type (preserves explicit 'continuous')
+        const nextType = sectionBreakTypes[sectionIdx + 1] ?? sectionBreakTypes[sectionIdx];
+        handleSectionBreak(
+          block as SectionBreakBlock,
+          paginator,
+          sectionColumnConfigs[sectionIdx + 1] ?? defaultColumns,
+          nextType
+        );
+        sectionIdx++;
         break;
+      }
     }
   }
 
@@ -674,12 +710,20 @@ function layoutTextBox(
 
 /**
  * Handle a section break block.
+ * @param block - The section break block (current section's properties)
+ * @param paginator - The paginator instance
+ * @param nextSectionColumns - Column layout for the NEXT section
+ * @param nextSectionType - Break type of the NEXT section (how it starts relative to current)
  */
 function handleSectionBreak(
-  block: { type?: 'continuous' | 'nextPage' | 'evenPage' | 'oddPage' },
-  paginator: ReturnType<typeof createPaginator>
+  _block: SectionBreakBlock,
+  paginator: ReturnType<typeof createPaginator>,
+  nextSectionColumns: ColumnLayout,
+  nextSectionType?: SectionBreakBlock['type']
 ): void {
-  const breakType = block.type ?? 'continuous';
+  // ECMA-376 §17.6.22: w:type specifies how the NEXT section starts relative to this one.
+  // Default is 'nextPage' when w:type is absent.
+  const breakType = nextSectionType ?? 'nextPage';
 
   switch (breakType) {
     case 'nextPage':
@@ -708,6 +752,9 @@ function handleSectionBreak(
       // No page break, content continues
       break;
   }
+
+  // Update column layout for the next section
+  paginator.updateColumns(nextSectionColumns);
 }
 
 // Re-export types
